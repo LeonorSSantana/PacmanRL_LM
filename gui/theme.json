@@ -1,0 +1,97 @@
+{
+  "#normal-label": {
+    "colours": {
+      "normal_text": "#000000"
+    },
+    "font": {
+      "size": 14
+    }
+  },
+  "label": {
+    "colours": {
+      "normal_text": "#FFFFFF"
+    },
+    "font": {
+      "size": 14
+    }
+  },
+  "#player_pokemon_label": {
+    "colours": {
+      "normal_text": "#FFFFFF"
+    },
+    "font": {
+      "size": 14
+    },
+    "misc": {
+      "text_horiz_alignment": "left"
+    }
+  },
+  "#cpu_pokemon_label": {
+    "colours": {
+      "normal_text": "#FFFFFF"
+    },
+    "font": {
+      "size": 14
+    },
+    "misc": {
+      "text_horiz_alignment": "right"
+    }
+  },
+  "button": {
+    "colours": {
+      "normal_text": "#FFFFFF",
+      "hovered_text": "#FFFFFF",
+      "hovered_border": "#B0B0B0"
+    },
+    "font": {
+      "size": 14
+    }
+  },
+  "#start_button": {
+    "images": {
+      "normal_image": {
+        "path": "assets/images/icons/start.png",
+        "sub_surface_rect": "0,0,24,24"
+      }
+    }
+  },
+  "#settings_button": {
+    "images": {
+      "normal_image": {
+        "path": "assets/images/icons/settings.png",
+        "sub_surface_rect": "0,0,24,24"
+      }
+    }
+  },
+  "#log_button": {
+    "images": {
+      "normal_image": {
+        "path": "assets/images/icons/log.png",
+        "sub_surface_rect": "0,0,24,24"
+      }
+    }
+  },
+  "#exit_button": {
+    "images": {
+      "normal_image": {
+        "path": "assets/images/icons/exit.png",
+        "sub_surface_rect": "0,0,24,24"
+      }
+    }
+  },
+  "progress_bar": {
+    "colours": {
+      "normal_text": "#00000000",
+      "text_shadow": "#00000000",
+      "normal_border": "#DDDDDD",
+      "filled_bar": "#00FF00,#FF0000,180",
+      "unfilled_bar": "#CCCCCC"
+    }
+  },
+  "panel": {
+    "colours": {
+      "dark_bg": "#21282D",
+      "normal_border": "#000000"
+    }
+  }
+}
