@@ -2,13 +2,14 @@ import pygame
 import random
 
 class Ghost:
-    def __init__(self, image_path, start_x, start_y, cell_size):
+    def __init__(self, image_path, start_pos, cell_size, ghost_id):
         self.image = pygame.transform.scale(pygame.image.load(image_path), (cell_size, cell_size))
         self.rect = self.image.get_rect()
-        self.rect.center = (start_x, start_y)
+        self.rect.center = start_pos
         self.cell_size = cell_size
         self.direction = random.choice([(1, 0), (-1, 0), (0, 1), (0, -1)])  # (dx, dy)
-        self.speed = cell_size // 4
+        self.speed = 2
+        self.dead = False
 
     def update(self, maze, time_delta):
         if not self.can_move(maze, self.direction):
@@ -17,8 +18,6 @@ class Ghost:
         self.align_to_grid()
 
     def can_move(self, maze, direction):
-        if direction == (0, 0):
-            return False
         next_rect = self.rect.move(self.speed * direction[0], self.speed * direction[1])
         for row_index, row in enumerate(maze.level_data):
             for col_index, cell in enumerate(row):
@@ -36,8 +35,7 @@ class Ghost:
         random.shuffle(directions)
         for direction in directions:
             if self.can_move(maze, direction):
-                self.direction = direction
-                break
+                return direction
         return self.direction
 
     def align_to_grid(self):
@@ -45,6 +43,11 @@ class Ghost:
             self.rect.centery = round(self.rect.centery / self.cell_size) * self.cell_size
         if self.direction[1] != 0:
             self.rect.centerx = round(self.rect.centerx / self.cell_size) * self.cell_size
+
+    def reset_position(self, start_pos):
+        self.rect.center = start_pos
+        self.direction = random.choice([(1, 0), (-1, 0), (0, 1), (0, -1)])
+        self.dead = False
 
     def draw(self, screen):
         screen.blit(self.image, self.rect.topleft)

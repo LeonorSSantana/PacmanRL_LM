@@ -10,7 +10,7 @@ class GameView:
         self.manager = manager
         self.game = game
         self.view_controller = view_controller
-        self.background_image = pygame.image.load('assets/images/bg.png').convert()
+        self.background_color = pygame.color.Color('#1a1a1a')
         self.header_panel = None
         self.footer_panel = None
         self.game_started = False
@@ -56,10 +56,11 @@ class GameView:
         )
 
     def start_game(self):
+        self.game.start_game()
         self.game_started = True
 
     def draw(self):
-        self.screen.blit(self.background_image, (0, 0))
+        self.screen.fill(self.background_color)
         self.manager.draw_ui(self.screen)
         if self.game_started:
             self.game.draw(self.screen)
