@@ -40,10 +40,14 @@ class Game:
         self.clock = pygame.time.Clock()
 
     def get_start_position(self):
-        return self.cell_size * 14.5 + self.maze.offset_x, self.cell_size * 23 + self.maze.offset_y
+        x = self.maze.offset_x + self.cell_size * 14.5
+        y = self.maze.offset_y + self.cell_size * 23
+        return x, y
 
     def get_ghost_start_position(self):
-        return self.cell_size * 13.5 + self.maze.offset_x, self.cell_size * 17 + self.maze.offset_y
+        x = self.maze.offset_x + self.cell_size * 13.5
+        y = self.maze.offset_y + self.cell_size * 17
+        return x, y
 
     def start_game(self):
         self.game_started = True
@@ -56,7 +60,7 @@ class Game:
         self.check_collisions()
 
         for ghost in self.ghosts:
-            ghost.update(self.maze, time_delta)
+            ghost.update(self.maze, time_delta, self.pacman.get_center())
 
     def handle_movement(self):
         time_delta = self.clock.tick(60) / 1000.0
@@ -78,7 +82,6 @@ class Game:
         turns = [False, False, False, False]
         num1 = (self.screen_height - 50) // 32
         num2 = pygame.display.get_surface().get_width() // 30
-        num3 = 15
 
         if 0 < center_x < 870:
             if self.level_data[center_y // num1][center_x // num2] == 1:

@@ -1,10 +1,13 @@
 import pygame
 
+
 class Pacman:
-    def __init__(self, start_pos, cell_size):
-        self.images = [pygame.transform.scale(pygame.image.load(f'assets/images/pacman/{i}.png'), (cell_size, cell_size)) for i in range(1, 5)]
+    def __init__(self, start_position, cell_size):
+        self.images = [
+            pygame.transform.scale(pygame.image.load(f'assets/images/pacman/{i}.png'), (cell_size, cell_size)) for i in
+            range(1, 5)]
         self.rect = self.images[0].get_rect()
-        self.rect.center = start_pos
+        self.rect.center = start_position
         self.cell_size = cell_size
         self.direction = (0, 0)
         self.next_direction = (0, 0)
@@ -56,10 +59,8 @@ class Pacman:
     def get_center(self):
         return self.rect.center
 
-    def set_direction(self, x, y):
-        self.next_direction = (x, y)
+    def set_direction(self, dx, dy):
+        self.next_direction = (dx, dy)
 
-    def reset_position(self, start_pos):
-        self.rect.center = start_pos
-        self.direction = (0, 0)
-        self.next_direction = (0, 0)
+    def reset_position(self, position):
+        self.rect.center = position

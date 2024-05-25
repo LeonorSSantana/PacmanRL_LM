@@ -2,7 +2,6 @@ import pygame
 from pygame_gui import UIManager
 from game.view_controller import ViewController
 from gui.game_view import GameView
-from gui.splash_screen import SplashScreen
 
 
 def main():
