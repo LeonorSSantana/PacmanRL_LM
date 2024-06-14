@@ -1,5 +1,6 @@
 from game.game import Game
 
+
 class ViewController:
     def __init__(self, screen, manager):
         self.screen = screen
