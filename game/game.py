@@ -1,17 +1,10 @@
 import pygame
-import copy
-from game.board import boards
-from game.maze import Maze
-from game.ghost import Ghost
-from game.pacman import Pacman
+from .environment import PacmanEnv
+from minigrid.manual_control import ManualControl
 
 
 class Game:
-    def __init__(self, screen_height, header_height, footer_height):
-        self.screen_height = screen_height
-        self.header_height = header_height
-        self.footer_height = footer_height
-
+    def __init__(self):
         self.game_started = False
         self.game_over = False
         self.game_won = False
@@ -21,20 +14,29 @@ class Game:
         print("[GAME] Starting game...")
         self.game_started = True
 
-    def update(self):
-        if not self.game_started:
-            return
+        # Close the current Pygame window
+        pygame.display.quit()
 
-    def draw(self, screen):
-        pass
+        # Initialize a new Pygame window
+        pygame.display.init()
+        pygame.display.set_mode((640, 640))
+
+        # Initialize the Pacman Minigrid environment
+        grid_size = 24
+        n_ghosts = 8
+        n_pellets = 15
+        env = PacmanEnv(grid_size=24, n_ghosts=n_ghosts, n_pellets=n_pellets)
+
+        # Enable manual control for testing
+        manual_control = ManualControl(env)
+        manual_control.start()
 
     def handle_events(self, event):
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_SPACE and (self.game_over or self.game_won):
+            if event.key == pygame.K_BACKSPACE:
                 self.restart_game()
 
     def restart_game(self):
         print("[GAME] Restarting game...")
-        self.game_started = False
         self.game_over = False
         self.game_won = False

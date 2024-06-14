@@ -1,7 +1,6 @@
 import pygame
 from pygame_gui import UIManager
-from game.view_controller import ViewController
-from gui.game_view import GameView
+from gui.splash_screen import SplashScreen
 
 
 def main():
@@ -12,11 +11,10 @@ def main():
     screen = pygame.display.set_mode((screen_width, screen_height))
     pygame.display.set_caption('PacmanRL: Reinforcement Learning for Pacman')
     manager = UIManager((screen_width, screen_height), 'gui/theme.json')
-    manager.preload_fonts([{'name': 'fira_code', 'point_size': 14, 'style': 'bold'}])
+    manager.preload_fonts([{'name': 'Arial', 'point_size': 14, 'style': 'bold'}])
     clock = pygame.time.Clock()
 
-    view_controller = ViewController(screen, manager)
-    view_controller.switch_to_splash_screen()
+    splash_screen = SplashScreen(screen, manager)
 
     running = True
     while running:
@@ -24,10 +22,8 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-            view_controller.handle_events(event)
-        view_controller.draw()
-        if view_controller.current_view and isinstance(view_controller.current_view, GameView) and view_controller.current_view.game_started:
-            view_controller.current_view.game.update(time_delta)
+            splash_screen.handle_events(event)
+        splash_screen.draw()
         manager.update(time_delta)
         pygame.display.flip()
 

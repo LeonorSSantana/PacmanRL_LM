@@ -1,2 +1,5 @@
-pygame-ce==2.4.1
-pygame-gui==0.6.9
+pygame-ce==2.5.0
+pygame-gui==0.6.11
+minigrid==2.3.1
+gym==0.26.2
+numpy==1.26.4
