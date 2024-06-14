@@ -15,10 +15,10 @@ class Game:
         self.game_started = True
 
         # Close the current Pygame window
-        pygame.display.quit()
+        pygame.quit()
 
         # Initialize a new Pygame window
-        pygame.display.init()
+        pygame.init()
         pygame.display.set_mode((640, 640))
 
         # Initialize the Pacman Minigrid environment

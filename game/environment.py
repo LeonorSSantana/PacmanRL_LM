@@ -25,13 +25,16 @@ PELLET_IMAGE_PATH = 'assets/images/orb.png'
 
 
 class PacmanEnv(MiniGridEnv):
-    def __init__(self, grid_size=24, agent_start_pos=(1, 1), agent_start_dir=0, n_pellets=15, n_ghosts=8, max_steps=None, **kwargs):
+    def __init__(self, grid_size=24, agent_start_pos=(1, 1), agent_start_dir=0, n_pellets=15, n_ghosts=8,
+                 max_steps=None, mode='Manual', **kwargs):
         self.agent_start_pos = agent_start_pos
         self.agent_start_dir = agent_start_dir
         self.cumulative_reward = 0
+        self.mode = mode
 
         # Define the mission
-        mission_space = MissionSpace(mission_func=lambda: f"Cumulative Reward: {self.cumulative_reward}")
+        mission_space = MissionSpace(mission_func=lambda: f"Mode: {self.mode} "
+                                                          f" Cumulative Reward: {self.cumulative_reward}")
 
         if max_steps is None:
             max_steps = 4 * grid_size ** 2
@@ -54,7 +57,8 @@ class PacmanEnv(MiniGridEnv):
         # Load custom images
         self.pacman_image = pygame.image.load(PACMAN_IMAGE_PATH).convert_alpha()
         self.pellet_image = pygame.image.load(PELLET_IMAGE_PATH).convert_alpha()
-        self.ghost_images = {color: pygame.image.load(path).convert_alpha() for color, path in GHOST_IMAGE_PATHS.items()}
+        self.ghost_images = {color: pygame.image.load(path).convert_alpha() for color, path in
+                             GHOST_IMAGE_PATHS.items()}
         self.agent_image = pygame.transform.rotate(self.pacman_image, -90 * self.agent_start_dir)
 
     def _gen_grid(self, width, height):
@@ -215,7 +219,7 @@ class PacmanEnv(MiniGridEnv):
                 (int(surf.get_size()[0] + offset), int(surf.get_size()[1] + offset))
             )
             bg.convert()
-            bg.fill((255, 255, 255))
+            bg.fill((0, 0, 0))
             bg.blit(surf, (offset / 2, 0))
 
             bg = pygame.transform.smoothscale(bg, (self.screen_size, self.screen_size))
@@ -226,10 +230,11 @@ class PacmanEnv(MiniGridEnv):
             text_rect = font.get_rect(text, size=font_size)
             text_rect.center = bg.get_rect().center
             text_rect.y = bg.get_height() - font_size * 1.5
-            font.render_to(bg, text_rect, text, size=font_size)
+            font.render_to(bg, text_rect, text, fgcolor=(255, 255, 255), size=font_size)
 
             self.window.blit(bg, (0, 0))
             pygame.event.pump()
+            self.metadata["render_fps"] = 30
             self.clock.tick(self.metadata["render_fps"])
             pygame.display.flip()
 
