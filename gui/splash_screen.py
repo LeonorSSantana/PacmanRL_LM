@@ -41,7 +41,7 @@ class SplashScreen:
         self.game_settings = None
 
     def create_ui_elements(self):
-        self.logotype = pygame.image.load('assets/images/logo.png').convert_alpha()
+        self.logotype = pygame.image.load('assets/images/pacman-rl.png').convert_alpha()
         logotype_rect = self.logotype.get_rect(center=(self.screen.get_width() // 2, LOGO_MARGIN_TOP))
         self.logotype_pos = logotype_rect.topleft
 
