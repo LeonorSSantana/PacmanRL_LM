@@ -1,4 +1,6 @@
 from __future__ import annotations
+
+import sys
 from operator import add
 
 import numpy as np
@@ -25,12 +27,18 @@ PELLET_IMAGE_PATH = 'assets/images/orb.png'
 
 
 class PacmanEnv(MiniGridEnv):
+    """
+    Custom environment class for the Pacman game. This class extends the MiniGrid environment and provides a custom
+    implementation of the Pacman game with ghosts and pellets. The environment is designed to be used with the
+    Q-Learning and SARSA agents for training and evaluation.
+    """
     def __init__(self, grid_size=24, agent_start_pos=(1, 1), agent_start_dir=0, n_pellets=15, n_ghosts=8,
-                 max_steps=None, mode='Manual', **kwargs):
+                 max_steps=200, mode='Manual', frames_per_second=10, **kwargs):
         self.agent_start_pos = agent_start_pos
         self.agent_start_dir = agent_start_dir
         self.cumulative_reward = 0
         self.mode = mode
+        self.frames_per_second = frames_per_second
 
         # Define the mission
         mission_space = MissionSpace(mission_func=lambda: f"Mode: {self.mode} "
@@ -62,6 +70,11 @@ class PacmanEnv(MiniGridEnv):
         self.agent_image = pygame.transform.rotate(self.pacman_image, -90 * self.agent_start_dir)
 
     def _gen_grid(self, width, height):
+        """
+        Generate the grid for the environment.
+        :param width: The width of the grid
+        :param height: The height of the grid
+        """
         self.grid = Grid(width, height)
 
         # Generate the surrounding walls
@@ -71,7 +84,7 @@ class PacmanEnv(MiniGridEnv):
         self.__create_maze()
 
         # Place goals (pellets) throughout the maze
-        self.__place_goals(n_pellets=30)
+        self.__place_goals(n_pellets=self.n_pellets)
 
         # Place the agent (Pacman)
         self.agent_pos = self.agent_start_pos
@@ -92,6 +105,7 @@ class PacmanEnv(MiniGridEnv):
     def __place_goals(self, n_pellets):
         """
         Randomly place goals (pellets) around the grid in open spaces.
+        :param n_pellets: The number of pellets to place in the grid
         """
         for _ in range(n_pellets):
             self.place_obj(CustomSprite(Goal(), self.pellet_image), max_tries=100)
@@ -99,7 +113,6 @@ class PacmanEnv(MiniGridEnv):
     def __create_maze(self):
         """
         Create a Pacman-like maze. This function sets walls in a pattern similar to the original Pacman maze.
-        The maze should be symmetrical and have pathways with enough space for Pacman to navigate.
         """
         for x, y, length, direction in maze_walls:
             if direction == 'vertical':
@@ -110,6 +123,11 @@ class PacmanEnv(MiniGridEnv):
                     self.grid.set(x + i, y, Wall())
 
     def step(self, action):
+        """
+        Execute the given action in the environment.
+        :param action: The action to execute (0: turn left, 1: turn right, 2: move forward, 3: pick up pellet)
+        :return:
+        """
         # Invalid action check
         if action not in self.action_space:
             action = 0
@@ -139,6 +157,7 @@ class PacmanEnv(MiniGridEnv):
 
         # Update agent's position/direction
         obs, reward, terminated, truncated, info = super(PacmanEnv, self).step(action)
+        print("Agent action: ", action)
 
         # Check if the agent has collided with a ghost
         if any(obstacle.cur_pos == self.agent_pos for obstacle in self.obstacles):
@@ -157,7 +176,7 @@ class PacmanEnv(MiniGridEnv):
 
         # Check if the agent visits a goal cell and reward accordingly
         current_cell = self.grid.get(*self.agent_pos)
-        if current_cell and current_cell.type == 'goal':
+        if self.actions.pickup and current_cell and current_cell.type == 'goal':
             # Remove the goal from the grid
             self.grid.set(self.agent_pos[0], self.agent_pos[1], None)
             reward = 3
@@ -167,7 +186,7 @@ class PacmanEnv(MiniGridEnv):
         self.cumulative_reward += reward
 
         # Update the mission text to reflect the new reward
-        self.mission = f"Cumulative Rewards: {self.cumulative_reward}"
+        self.mission = f"Mode: {self.mode}, Cumulative Rewards: {self.cumulative_reward}"
 
         return obs, reward, terminated, truncated, info
 
@@ -177,6 +196,19 @@ class PacmanEnv(MiniGridEnv):
         """
         x, y = pos
         return 0 <= x < self.grid.width and 0 <= y < self.grid.height
+
+    def reset(self, seed=None, options=None):
+        # Call the parent reset method which initializes everything
+        obs, info = super(PacmanEnv, self).reset(seed=seed, options=options)
+
+        # Ensure the agent position and direction are initialized
+        self.agent_pos = self.agent_start_pos
+        self.agent_dir = self.agent_start_dir
+
+        # Debugging print statements to verify reset
+        print(f"[DEBUG] Agent reset to position: {self.agent_pos} with direction: {self.agent_dir}")
+
+        return obs, info
 
     # Custom rendering function
     def render(self):
@@ -234,9 +266,17 @@ class PacmanEnv(MiniGridEnv):
 
             self.window.blit(bg, (0, 0))
             pygame.event.pump()
-            self.metadata["render_fps"] = 30
+            self.metadata["render_fps"] = self.frames_per_second
             self.clock.tick(self.metadata["render_fps"])
             pygame.display.flip()
+
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                    pygame.quit()
+                    sys.exit()
 
         elif self.render_mode == "rgb_array":
             return img
