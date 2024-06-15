@@ -1,7 +1,5 @@
 import sys
-
 import pygame
-
 from agents.q_learning import QLearning
 from .environment import PacmanEnv
 from minigrid.manual_control import ManualControl
@@ -9,14 +7,38 @@ from minigrid.manual_control import ManualControl
 
 class Game:
     def __init__(self):
+        self.game_settings = None
         self.game_started = False
+        self.env = None
+
+        # Default game settings
+        self.default_settings = {
+            'grid_size': 24,
+            'n_ghosts': 4,
+            'n_pellets': 30,
+            'mode': 'Manual',
+            'algorithm': None,  # None means no specific algorithm chosen
+            'speed': 60,  # Frames per second
+            'deterministic': True
+        }
+
         self.clock = pygame.time.Clock()
 
-    def start_game(self):
+    def start_game(self, **kwargs):
         print("[GAME] Starting game...")
-        self.game_started = True
 
-        # Close the current Pygame window
+        # Apply settings, using defaults for any missing values
+        self.game_settings = {**self.default_settings, **kwargs}
+
+        print(f"[GAME] Settings:\n"
+              f"-> Ghosts={self.game_settings['n_ghosts']}\n"
+              f"-> Pellets={self.game_settings['n_pellets']}\n"
+              f"-> Mode={self.game_settings['mode']}\n"
+              f"-> Algorithm={self.game_settings['algorithm']}\n"
+              f"-> Speed={self.game_settings['speed']}\n"
+              f"-> Deterministic={self.game_settings['deterministic']}")
+
+        # Close the current Pygame window if open
         pygame.quit()
 
         # Initialize a new Pygame window
@@ -24,34 +46,36 @@ class Game:
         pygame.display.set_mode((640, 640))
 
         # Initialize the Pacman Minigrid environment
-        grid_size = 24
-        n_ghosts = 4
-        n_pellets = 30
-        seed = 1  # Define a seed for deterministic results
-        mode = "Q-Learning"  # "Manual", "Q-Learning" or "SARSA"
-        speed = 60  # Number of frames per second for rendering
-        env = PacmanEnv(
-            grid_size=grid_size,
-            n_ghosts=n_ghosts,
-            n_pellets=n_pellets,
-            mode=mode,
-            frames_per_second=speed,
-            seed=seed
+        self.env = PacmanEnv(
+            grid_size=self.game_settings['grid_size'],
+            n_ghosts=self.game_settings['n_ghosts'],
+            n_pellets=self.game_settings['n_pellets'],
+            mode=self.game_settings['mode'],
+            algorithm=self.game_settings['algorithm'],
+            frames_per_second=self.game_settings['speed'],
+            seed=1 if self.game_settings['deterministic'] else None
         )
 
-        # Train the Q-Learning agent
-        q_learning_agent = QLearning(env)
-        q_learning_agent.train(num_episodes=1000)
-        q_learning_agent.save_q_table(filename='models/q_table.pkl')
+        # Start the game in Manual mode
+        if self.game_settings['mode'] == "Manual":
+            manual_control = ManualControl(self.env)
+            manual_control.start()
 
-        # Test the Q-Learning agent
-        # q_learning_agent = QLearning(env)
-        # q_learning_agent.load_q_table(filename='models/q_table.pkl')
-        # q_learning_agent.test(num_episodes=100)
+        # Train the agent using Q-Learning
+        elif self.game_settings['mode'] == "Training":
+            if self.game_settings['algorithm'] == 'Q-Learning':
+                print("[GAME] Training Q-Learning agent...")
+                q_learning_agent = QLearning(self.env)
+                q_learning_agent.train(num_episodes=1000)
+                q_learning_agent.save_q_table(filename='models/q_table.pkl')
 
-        # Run with manual control
-        # manual_control = ManualControl(env)
-        # manual_control.start()
+        # Test the agent using Q-Learning
+        elif self.game_settings['mode'] == "Testing":
+            if self.game_settings['algorithm'] == 'Q-Learning':
+                print("[GAME] Testing Q-Learning agent...")
+                q_learning_agent = QLearning(self.env)
+                q_learning_agent.load_q_table(filename='models/q_table.pkl')
+                q_learning_agent.test(num_episodes=100)
 
     def handle_events(self, event):
         if event.type == pygame.KEYDOWN:

@@ -34,17 +34,21 @@ class PacmanEnv(MiniGridEnv):
     """
 
     def __init__(self, grid_size=24, agent_start_pos=(1, 1), agent_start_dir=0, n_pellets=30, n_ghosts=4,
-                 max_steps=1000, mode='Manual', frames_per_second=10, seed=None, **kwargs):
+                 max_steps=1000, mode='Manual', algorithm=None, frames_per_second=10, seed=None, **kwargs):
         self.agent_start_pos = agent_start_pos
         self.agent_start_dir = agent_start_dir
         self.cumulative_reward = 0
         self.mode = mode
+        self.algorithm = algorithm
         self.seed = seed
         self.frames_per_second = frames_per_second
 
+        # Define the mission string
+        self.mission_string = f"Mode: {self.mode}, Cumulative Reward: {self.cumulative_reward}" \
+            if self.mode == "Manual" else f"Algorithm: {self.algorithm}, Cumulative Reward: {self.cumulative_reward}"
+
         # Define the mission
-        mission_space = MissionSpace(mission_func=lambda: f"Mode: {self.mode} "
-                                                          f" Cumulative Reward: {self.cumulative_reward}")
+        mission_space = MissionSpace(mission_func=lambda: self.mission_string)
 
         if max_steps is None:
             max_steps = 4 * grid_size ** 2
@@ -290,7 +294,8 @@ class PacmanEnv(MiniGridEnv):
         self.cumulative_reward += reward
 
         # Update the mission text to reflect the new reward
-        self.mission = f"Mode: {self.mode}, Cumulative Reward: {self.cumulative_reward}"
+        self.mission = f"Mode: {self.mode}, Cumulative Reward: {self.cumulative_reward}" \
+            if self.mode == "Manual" else f"Algorithm: {self.algorithm}, Cumulative Reward: {self.cumulative_reward}"
 
         return obs, reward, terminated, truncated, info
 
