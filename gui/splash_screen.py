@@ -1,3 +1,5 @@
+import sys
+
 import pygame
 import pygame_gui
 from pygame_gui.core import ObjectID
@@ -35,7 +37,7 @@ class SplashScreen:
         self.create_ui_elements()
 
         # Game settings
-        self.start_game = False
+        self.game_is_running = False
         self.game_settings = None
 
     def create_ui_elements(self):
@@ -104,47 +106,58 @@ class SplashScreen:
                     self.options_window.window.kill()
                     self.options_window_killed = True
                     self.options_window = None
-        else:
+        elif not self.game_is_running:
             # Handle splash screen events
-            for event in pygame.event.get():
-                if event.type == pygame.USEREVENT and event.user_type == pygame_gui.UI_BUTTON_PRESSED:
-                    if event.ui_element == self.btn_train_rl:
-                        print("[SPLASH SCREEN] Training RL...")
-                        self.start_game = True
-                        game = Game()
-                        settings = self.game_settings if self.game_settings else {}
-                        settings['mode'] = 'Training'
-                        settings['algorithm'] = 'Q-Learning' if settings.get('algorithm') is None else settings['algorithm']
-                        game.start_game(**settings)
-                    elif event.ui_element == self.btn_test_rl:
-                        print("[SPLASH SCREEN] Testing RL...")
-                        self.start_game = True
-                        game = Game()
-                        settings = self.game_settings if self.game_settings else {}
-                        settings['mode'] = 'Testing'
-                        settings['algorithm'] = 'Q-Learning' if settings.get('algorithm') is None else settings['algorithm']
-                        game.start_game(**settings)
-                    elif event.ui_element == self.btn_manual:
-                        print("[SPLASH SCREEN] Manual Mode")
-                        self.start_game = True
-                        game = Game()
-                        settings = self.game_settings if self.game_settings else {}
-                        settings['mode'] = 'Manual'
-                        game.start_game(**settings)
-                    elif event.ui_element == self.btn_options:
-                        if self.options_window is None or self.options_window_killed:
-                            print("[SPLASH SCREEN] Options window opened.")
-                            self.options_window = OptionsWindow(self.screen, self.manager)
-                            self.options_window_killed = False
-                            self.options_window.show()
-                    elif event.ui_element == self.btn_about:
-                        print("[SPLASH SCREEN] About button pressed.")
-                    elif event.ui_element == self.btn_exit:
-                        print("[SPLASH SCREEN] Exit button pressed.")
-                        pygame.event.post(pygame.event.Event(pygame.QUIT))
+            if event.type == pygame.USEREVENT and event.user_type == pygame_gui.UI_BUTTON_PRESSED:
+                if event.ui_element == self.btn_train_rl:
+                    print("[SPLASH SCREEN] Training RL...")
+                    self.start_game('Training')
+                elif event.ui_element == self.btn_test_rl:
+                    print("[SPLASH SCREEN] Testing RL...")
+                    self.start_game('Testing')
+                elif event.ui_element == self.btn_manual:
+                    print("[SPLASH SCREEN] Manual Mode")
+                    self.start_game('Manual')
+                elif event.ui_element == self.btn_options:
+                    if self.options_window is None or self.options_window_killed:
+                        print("[SPLASH SCREEN] Options window opened.")
+                        self.options_window = OptionsWindow(self.screen, self.manager)
+                        self.options_window_killed = False
+                        self.options_window.show()
+                elif event.ui_element == self.btn_about:
+                    print("[SPLASH SCREEN] About button pressed.")
+                elif event.ui_element == self.btn_exit:
+                    print("[SPLASH SCREEN] Exit button pressed.")
+                    pygame.event.post(pygame.event.Event(pygame.QUIT))
 
         # Verify if the options window was closed
         if event.type == pygame_gui.UI_WINDOW_CLOSE and self.options_window and event.ui_element == self.options_window.window:
             print("[SPLASH SCREEN] Options window closed.")
             self.options_window_killed = True
             self.options_window = None
+
+    def start_game(self, mode):
+        """
+        Start the game with the specified mode.
+        """
+        self.game_is_running = True
+        settings = self.game_settings if self.game_settings else {}
+        settings['mode'] = mode
+        settings['algorithm'] = 'Q-Learning' if settings.get('algorithm') is None else settings['algorithm']
+
+        # Clean up before starting the game
+        pygame.quit()
+
+        game = Game()
+        game.start_game(**settings)
+
+        print(f"[SPLASH SCREEN] {mode} session finished.")
+        self.exit_game()
+
+    def exit_game(self):
+        """
+        Exit the game and return to the splash screen.
+        """
+        self.game_is_running = False
+        pygame.quit()
+        sys.exit(0)

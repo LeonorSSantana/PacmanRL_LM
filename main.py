@@ -23,9 +23,10 @@ def main():
             if event.type == pygame.QUIT:
                 running = False
             splash_screen.handle_events(event)
-        splash_screen.draw()
-        manager.update(time_delta)
-        pygame.display.flip()
+        if not splash_screen.game_is_running:
+            splash_screen.draw()
+            manager.update(time_delta)
+            pygame.display.flip()
 
     pygame.quit()
 

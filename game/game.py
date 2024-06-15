@@ -19,7 +19,12 @@ class Game:
             'mode': 'Manual',
             'algorithm': None,  # None means no specific algorithm chosen
             'speed': 60,  # Frames per second
-            'deterministic': True
+            'deterministic': True,
+            'epsilon': 0.1,
+            'epsilon_decay': 0.995,
+            'gamma': 0.9,
+            'alpha': 0.1,
+            'num_episodes': 1000
         }
 
         self.clock = pygame.time.Clock()
@@ -30,13 +35,20 @@ class Game:
         # Apply settings, using defaults for any missing values
         self.game_settings = {**self.default_settings, **kwargs}
 
-        print(f"[GAME] Settings:\n"
+        print(f"[GAME] Environment Settings:\n"
               f"-> Ghosts={self.game_settings['n_ghosts']}\n"
               f"-> Pellets={self.game_settings['n_pellets']}\n"
               f"-> Mode={self.game_settings['mode']}\n"
               f"-> Algorithm={self.game_settings['algorithm']}\n"
               f"-> Speed={self.game_settings['speed']}\n"
               f"-> Deterministic={self.game_settings['deterministic']}")
+
+        print(f"[GAME] RL Settings:\n"
+              f"-> Num Episodes={self.game_settings['num_episodes']}\n"
+              f"-> Epsilon={self.game_settings['epsilon']}\n"
+              f"-> Epsilon Decay={self.game_settings['epsilon_decay']}\n"
+              f"-> Discount Factor={self.game_settings['gamma']}\n"
+              f"-> Learning Rate={self.game_settings['alpha']}\n")
 
         # Close the current Pygame window if open
         pygame.quit()
@@ -65,9 +77,16 @@ class Game:
         elif self.game_settings['mode'] == "Training":
             if self.game_settings['algorithm'] == 'Q-Learning':
                 print("[GAME] Training Q-Learning agent...")
-                q_learning_agent = QLearning(self.env)
-                q_learning_agent.train(num_episodes=1000)
+                q_learning_agent = QLearning(
+                    self.env,
+                    epsilon=self.game_settings['epsilon'],
+                    epsilon_decay=self.game_settings['epsilon_decay'],
+                    gamma=self.game_settings['gamma'],
+                    alpha=self.game_settings['alpha']
+                )
+                q_learning_agent.train(num_episodes=self.game_settings['num_episodes'])
                 q_learning_agent.save_q_table(filename='models/q_table.pkl')
+                self.game_started = False
 
         # Test the agent using Q-Learning
         elif self.game_settings['mode'] == "Testing":

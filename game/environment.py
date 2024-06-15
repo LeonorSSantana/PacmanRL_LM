@@ -38,14 +38,16 @@ class PacmanEnv(MiniGridEnv):
         self.agent_start_pos = agent_start_pos
         self.agent_start_dir = agent_start_dir
         self.cumulative_reward = 0
+        self.n_pellets = n_pellets
         self.mode = mode
         self.algorithm = algorithm
         self.seed = seed
         self.frames_per_second = frames_per_second
 
         # Define the mission string
-        self.mission_string = f"Mode: {self.mode}, Cumulative Reward: {self.cumulative_reward}" \
-            if self.mode == "Manual" else f"Algorithm: {self.algorithm}, Cumulative Reward: {self.cumulative_reward}"
+        self.mission_string = f"Mode: {self.mode}        Cumulative Reward: {self.cumulative_reward}        Pellets: {self.n_pellets}" \
+            if self.mode == "Manual" else \
+            f"Algorithm: {self.algorithm}        Cumulative Reward: {self.cumulative_reward}        Pellets: {self.n_pellets}"
 
         # Define the mission
         mission_space = MissionSpace(mission_func=lambda: self.mission_string)
@@ -72,7 +74,8 @@ class PacmanEnv(MiniGridEnv):
         # Load custom images
         self.pacman_image = pygame.image.load(PACMAN_IMAGE_PATH).convert_alpha()
         self.pellet_image = pygame.image.load(PELLET_IMAGE_PATH).convert_alpha()
-        self.ghost_images = {color: pygame.image.load(path).convert_alpha() for color, path in GHOST_IMAGE_PATHS.items()}
+        self.ghost_images = {color: pygame.image.load(path).convert_alpha() for color, path in
+                             GHOST_IMAGE_PATHS.items()}
         self.agent_image = pygame.transform.rotate(self.pacman_image, -90 * self.agent_start_dir)
 
     def _gen_grid(self, width, height):
@@ -109,7 +112,8 @@ class PacmanEnv(MiniGridEnv):
             self.place_obj(ghost)
 
             # Ensure that the ghost's current position is set after placing it
-            ghost.obj.cur_pos = ghost.obj.init_pos if ghost.obj.init_pos else self._rand_pos(1, width - 1, 1, height - 1)
+            ghost.obj.cur_pos = ghost.obj.init_pos if ghost.obj.init_pos else self._rand_pos(1, width - 1, 1,
+                                                                                             height - 1)
 
     def __place_pellets(self, n_pellets):
         """
@@ -204,7 +208,17 @@ class PacmanEnv(MiniGridEnv):
         return self.bfs_nearest_object(self.agent_pos, self.grid, 'lava')
 
     def __calculate_rewards(self, action):
-        reward = 0
+        """
+        Calculate the reward and termination conditions based on the current state and action.
+        Reward points:
+        - Penalty for each step (-1)
+        - Reward for reaching the pellet (+50)
+        - Penalty for hitting a ghost (-100)
+        - Penalty if the new distance to the nearest pellet is greater than the current distance (-1)
+        :param action: The action to execute (0: turn left, 1: turn right, 2: move forward)
+        :return: Tuple (reward, terminated)
+        """
+        reward = -1  # Penalty for each step
         terminated = False
 
         # Helper variables
@@ -219,6 +233,7 @@ class PacmanEnv(MiniGridEnv):
         if current_cell and current_cell.type == 'goal':
             reward += 50
             self.grid.set(self.agent_pos[0], self.agent_pos[1], None)
+            self.n_pellets -= 1
 
         # Penalty for hitting a ghost
         if any(obstacle.cur_pos == self.agent_pos for obstacle in self.obstacles):
@@ -230,28 +245,34 @@ class PacmanEnv(MiniGridEnv):
             reward -= 100
             terminated = True
 
-        # Penalize if the agent is spinning (moving left or right without progressing)
+        # Calculate the nearest pellet position before action
         nearest_pellet_pos = self._nearest_pellet()
-        if nearest_pellet_pos != (0, 0):  # There is a pellet in the grid
-            agent_pos = np.array(self.agent_pos)
-            nearest_pellet_abs_pos = agent_pos + np.array(nearest_pellet_pos)
+        nearest_pellet_abs_pos = np.array(self.agent_pos) + np.array(nearest_pellet_pos)
+        current_distance = np.linalg.norm(np.array(self.agent_pos) - nearest_pellet_abs_pos)
 
-        # If the action is not forward, check if it brings agent closer to the nearest pellet
-        if action in [self.actions.left, self.actions.right]:
-            # Current distance to the nearest pellet
-            agent_pos = np.array(self.agent_pos)
-            nearest_pellet_abs_pos = agent_pos + np.array(nearest_pellet_pos)
-            current_distance = np.linalg.norm(agent_pos - nearest_pellet_abs_pos)
+        # Calculate the nearest pellet position before action
+        nearest_pellet_pos = self._nearest_pellet()
+        nearest_pellet_abs_pos = np.array(self.agent_pos) + np.array(nearest_pellet_pos)
+        current_distance = np.linalg.norm(np.array(self.agent_pos) - nearest_pellet_abs_pos)
 
-            # Simulate the agent's new position after the action
-            new_agent_dir = (self.agent_dir + (1 if action == self.actions.right else -1)) % 4
-            direction_vec = DIR_TO_VEC[new_agent_dir]
-            new_front_pos = self.agent_pos + direction_vec
-            new_distance = np.linalg.norm(np.array(new_front_pos) - nearest_pellet_abs_pos)
+        # Calculate new position and direction based on the action
+        new_agent_pos = np.array(self.agent_pos)
+        new_agent_dir = self.agent_dir
 
-            # Penalize if the new distance is not shorter
-            if new_distance >= current_distance:
-                reward -= 1
+        if action == self.actions.left:
+            new_agent_dir = (self.agent_dir - 1) % 4
+        elif action == self.actions.right:
+            new_agent_dir = (self.agent_dir + 1) % 4
+        elif action == self.actions.forward:
+            new_agent_pos = new_agent_pos + DIR_TO_VEC[self.agent_dir]
+
+        # Calculate the new front position and distance to the nearest pellet after the action
+        new_front_pos = new_agent_pos + DIR_TO_VEC[new_agent_dir]
+        new_distance = np.linalg.norm(new_agent_pos - nearest_pellet_abs_pos)
+
+        # Penalize if the new distance is greater than the current distance
+        if new_distance >= current_distance:
+            reward -= 1
 
         return reward, terminated
 
@@ -293,9 +314,15 @@ class PacmanEnv(MiniGridEnv):
         # Update cumulative reward
         self.cumulative_reward += reward
 
+        # If all pellets are collected, terminate the episode
+        if self.n_pellets == 0:
+            print(f"[ENV] All pellets collected! Cumulative Reward: {self.cumulative_reward}")
+            self.close()
+
         # Update the mission text to reflect the new reward
-        self.mission = f"Mode: {self.mode}, Cumulative Reward: {self.cumulative_reward}" \
-            if self.mode == "Manual" else f"Algorithm: {self.algorithm}, Cumulative Reward: {self.cumulative_reward}"
+        self.mission = f"Mode: {self.mode}        Cumulative Reward: {self.cumulative_reward}        Pellets: {self.n_pellets}" \
+            if self.mode == "Manual" else \
+            f"Algorithm: {self.algorithm}        Cumulative Reward: {self.cumulative_reward}        Pellets: {self.n_pellets}"
 
         return obs, reward, terminated, truncated, info
 
@@ -306,9 +333,6 @@ class PacmanEnv(MiniGridEnv):
         # Ensure the agent position and direction are initialized
         self.agent_pos = self.agent_start_pos
         self.agent_dir = self.agent_start_dir
-
-        # Debugging print statements to verify reset
-        print(f"[ENV] Agent reset to position: {self.agent_pos} with direction: {self.agent_dir}")
         self.cumulative_reward = 0
 
         return obs, info
