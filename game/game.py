@@ -33,16 +33,12 @@ class Game:
 
         # Create QLearning agent
         q_learning_agent = QLearning(env)
-
-        # Train the agent
         q_learning_agent.train(num_episodes=1000)
-
-        # Save the Q-table
         q_learning_agent.save_q_table()
 
         # Enable manual control for testing
-        manual_control = ManualControl(env)
-        manual_control.start()
+        # manual_control = ManualControl(env)
+        # manual_control.start()
 
     def handle_events(self, event):
         if event.type == pygame.KEYDOWN:
