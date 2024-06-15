@@ -1,10 +1,10 @@
-from __future__ import annotations
-
 import sys
+from collections import deque
 from operator import add
 
 import numpy as np
 from gymnasium.spaces import Discrete
+from minigrid.core.constants import DIR_TO_VEC
 from minigrid.core.grid import Grid
 from minigrid.core.mission import MissionSpace
 from minigrid.core.world_object import Goal, Wall, Lava
@@ -32,12 +32,14 @@ class PacmanEnv(MiniGridEnv):
     implementation of the Pacman game with ghosts and pellets. The environment is designed to be used with the
     Q-Learning and SARSA agents for training and evaluation.
     """
-    def __init__(self, grid_size=24, agent_start_pos=(1, 1), agent_start_dir=0, n_pellets=15, n_ghosts=8,
-                 max_steps=200, mode='Manual', frames_per_second=10, **kwargs):
+
+    def __init__(self, grid_size=24, agent_start_pos=(1, 1), agent_start_dir=0, n_pellets=30, n_ghosts=4,
+                 max_steps=1000, mode='Manual', frames_per_second=10, seed=None, **kwargs):
         self.agent_start_pos = agent_start_pos
         self.agent_start_dir = agent_start_dir
         self.cumulative_reward = 0
         self.mode = mode
+        self.seed = seed
         self.frames_per_second = frames_per_second
 
         # Define the mission
@@ -47,7 +49,7 @@ class PacmanEnv(MiniGridEnv):
         if max_steps is None:
             max_steps = 4 * grid_size ** 2
 
-        super(PacmanEnv, self).__init__(
+        super().__init__(
             mission_space=mission_space,
             grid_size=grid_size,
             max_steps=max_steps,
@@ -58,15 +60,15 @@ class PacmanEnv(MiniGridEnv):
         )
 
         # Environment-specific properties
-        self.action_space = Discrete(4)  # Actions: turn left, turn right, move forward and pick up pellet
+        # self.action_space = Discrete(4)  # Actions: turn left, turn right, move forward and pick up pellet
+        self.action_space = Discrete(3)  # Actions: turn left, turn right, move forward
         self.n_ghosts = n_ghosts
         self.n_pellets = n_pellets
 
         # Load custom images
         self.pacman_image = pygame.image.load(PACMAN_IMAGE_PATH).convert_alpha()
         self.pellet_image = pygame.image.load(PELLET_IMAGE_PATH).convert_alpha()
-        self.ghost_images = {color: pygame.image.load(path).convert_alpha() for color, path in
-                             GHOST_IMAGE_PATHS.items()}
+        self.ghost_images = {color: pygame.image.load(path).convert_alpha() for color, path in GHOST_IMAGE_PATHS.items()}
         self.agent_image = pygame.transform.rotate(self.pacman_image, -90 * self.agent_start_dir)
 
     def _gen_grid(self, width, height):
@@ -84,7 +86,7 @@ class PacmanEnv(MiniGridEnv):
         self.__create_maze()
 
         # Place goals (pellets) throughout the maze
-        self.__place_goals(n_pellets=self.n_pellets)
+        self.__place_pellets(n_pellets=self.n_pellets)
 
         # Place the agent (Pacman)
         self.agent_pos = self.agent_start_pos
@@ -102,7 +104,10 @@ class PacmanEnv(MiniGridEnv):
             self.obstacles.append(ghost)
             self.place_obj(ghost)
 
-    def __place_goals(self, n_pellets):
+            # Ensure that the ghost's current position is set after placing it
+            ghost.obj.cur_pos = ghost.obj.init_pos if ghost.obj.init_pos else self._rand_pos(1, width - 1, 1, height - 1)
+
+    def __place_pellets(self, n_pellets):
         """
         Randomly place goals (pellets) around the grid in open spaces.
         :param n_pellets: The number of pellets to place in the grid
@@ -122,19 +127,139 @@ class PacmanEnv(MiniGridEnv):
                 for i in range(length):
                     self.grid.set(x + i, y, Wall())
 
+    def __is_in_bounds(self, pos):
+        """
+        Check if the given position is within the grid boundaries.
+        """
+        x, y = pos
+        return 0 <= x < self.grid.width and 0 <= y < self.grid.height
+
+    def get_state(self):
+        """
+        Get the current state representation for the agent.
+        The state includes:
+        - Agent's position and direction
+        - Relative positions of the nearest pellet and ghost
+        - Distance to the nearest wall
+        """
+        state = {
+            'agent_pos': self.agent_pos,
+            'agent_dir': self.agent_dir,
+            'nearest_pellet': self._nearest_pellet(),
+            'nearest_ghost': self._nearest_ghost(),
+        }
+        # Convert dictionary to a sorted tuple of items to make it hashable
+        return tuple(sorted(state.items()))
+
+    @staticmethod
+    def bfs_nearest_object(agent_pos, grid, target_type):
+        """
+        Perform BFS to find the nearest object of the specified type.
+        :param agent_pos: Current position of the agent.
+        :param grid: The grid containing the objects.
+        :param target_type: The type of target object to find.
+        :return: The relative position of the nearest object or (0, 0) if none is found.
+        """
+        width, height = grid.width, grid.height
+        queue = deque([(agent_pos, 0)])  # Each entry is (position, distance)
+        visited = set()
+        visited.add(agent_pos)
+
+        directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]  # Possible movements: down, right, up, left
+
+        while queue:
+            (x, y), dist = queue.popleft()
+
+            # Check all adjacent cells
+            for dx, dy in directions:
+                nx, ny = x + dx, y + dy
+
+                if 0 <= nx < width and 0 <= ny < height and (nx, ny) not in visited:
+                    cell = grid.get(nx, ny)
+                    if cell is not None:
+                        if cell.type == target_type:
+                            return nx - agent_pos[0], ny - agent_pos[1]  # Return relative position
+                        if cell.type == 'wall':
+                            continue  # Skip walls
+
+                    visited.add((nx, ny))
+                    queue.append(((nx, ny), dist + 1))
+
+        return 0, 0  # Return (0, 0) if no target object is found
+
+    def _nearest_pellet(self):
+        """
+        Calculate the relative position of the nearest pellet.
+        """
+        return self.bfs_nearest_object(self.agent_pos, self.grid, 'goal')
+
+    def _nearest_ghost(self):
+        """
+        Calculate the relative position of the nearest ghost.
+        """
+        return self.bfs_nearest_object(self.agent_pos, self.grid, 'lava')
+
+    def __calculate_rewards(self, action):
+        reward = 0
+        terminated = False
+
+        # Helper variables
+        front_cell = self.grid.get(*self.front_pos)
+
+        # Check if the agent attempts to move into a wall
+        if action == self.actions.forward and front_cell is not None and front_cell.type == 'wall':
+            reward -= 1
+
+        # Reward for reaching the pellet
+        current_cell = self.grid.get(*self.agent_pos)
+        if current_cell and current_cell.type == 'goal':
+            reward += 50
+            self.grid.set(self.agent_pos[0], self.agent_pos[1], None)
+
+        # Penalty for hitting a ghost
+        if any(obstacle.cur_pos == self.agent_pos for obstacle in self.obstacles):
+            reward -= 100
+            terminated = True
+
+        # Penalty if front cell is a ghost
+        if front_cell is not None and front_cell.type == 'lava':
+            reward -= 100
+            terminated = True
+
+        # Penalize if the agent is spinning (moving left or right without progressing)
+        nearest_pellet_pos = self._nearest_pellet()
+        if nearest_pellet_pos != (0, 0):  # There is a pellet in the grid
+            agent_pos = np.array(self.agent_pos)
+            nearest_pellet_abs_pos = agent_pos + np.array(nearest_pellet_pos)
+
+        # If the action is not forward, check if it brings agent closer to the nearest pellet
+        if action in [self.actions.left, self.actions.right]:
+            # Current distance to the nearest pellet
+            agent_pos = np.array(self.agent_pos)
+            nearest_pellet_abs_pos = agent_pos + np.array(nearest_pellet_pos)
+            current_distance = np.linalg.norm(agent_pos - nearest_pellet_abs_pos)
+
+            # Simulate the agent's new position after the action
+            new_agent_dir = (self.agent_dir + (1 if action == self.actions.right else -1)) % 4
+            direction_vec = DIR_TO_VEC[new_agent_dir]
+            new_front_pos = self.agent_pos + direction_vec
+            new_distance = np.linalg.norm(np.array(new_front_pos) - nearest_pellet_abs_pos)
+
+            # Penalize if the new distance is not shorter
+            if new_distance >= current_distance:
+                reward -= 1
+
+        return reward, terminated
+
     def step(self, action):
         """
         Execute the given action in the environment.
         :param action: The action to execute (0: turn left, 1: turn right, 2: move forward, 3: pick up pellet)
-        :return:
+        :return: Tuple (obs, reward, terminated, truncated, info)
         """
         # Invalid action check
         if action not in self.action_space:
             action = 0
-
-        # Helper variables
-        front_cell = self.grid.get(*self.front_pos)
-        not_clear = front_cell and front_cell.type == "wall"
 
         # Update obstacle (ghost) positions without diagonal movement
         for obstacle in self.obstacles:
@@ -156,57 +281,30 @@ class PacmanEnv(MiniGridEnv):
                     valid_move = True
 
         # Update agent's position/direction
-        obs, reward, terminated, truncated, info = super(PacmanEnv, self).step(action)
-        print("Agent action: ", action)
+        obs, reward, terminated, truncated, info = super().step(action)
 
-        # Check if the agent has collided with a ghost
-        if any(obstacle.cur_pos == self.agent_pos for obstacle in self.obstacles):
-            reward = -10
-            terminated = True
-
-        # Check if the agent faces a ghost and terminate the game
-        if front_cell and front_cell.type == 'lava':  # Assuming ghosts are represented by 'Lava'
-            reward = -10
-            terminated = True
-
-        # Check if the agent tries to move into a wall
-        if action == self.actions.forward and not_clear:
-            reward = -1
-            terminated = False
-
-        # Check if the agent visits a goal cell and reward accordingly
-        current_cell = self.grid.get(*self.agent_pos)
-        if self.actions.pickup and current_cell and current_cell.type == 'goal':
-            # Remove the goal from the grid
-            self.grid.set(self.agent_pos[0], self.agent_pos[1], None)
-            reward = 3
-            terminated = False  # Do not terminate the game for collecting a goal
+        # Call the reward function to calculate reward and termination
+        reward, terminated = self.__calculate_rewards(action)
 
         # Update cumulative reward
         self.cumulative_reward += reward
 
         # Update the mission text to reflect the new reward
-        self.mission = f"Mode: {self.mode}, Cumulative Rewards: {self.cumulative_reward}"
+        self.mission = f"Mode: {self.mode}, Cumulative Reward: {self.cumulative_reward}"
 
         return obs, reward, terminated, truncated, info
 
-    def __is_in_bounds(self, pos):
-        """
-        Check if the given position is within the grid boundaries.
-        """
-        x, y = pos
-        return 0 <= x < self.grid.width and 0 <= y < self.grid.height
-
     def reset(self, seed=None, options=None):
         # Call the parent reset method which initializes everything
-        obs, info = super(PacmanEnv, self).reset(seed=seed, options=options)
+        obs, info = super().reset(seed=self.seed, options=options)
 
         # Ensure the agent position and direction are initialized
         self.agent_pos = self.agent_start_pos
         self.agent_dir = self.agent_start_dir
 
         # Debugging print statements to verify reset
-        print(f"[DEBUG] Agent reset to position: {self.agent_pos} with direction: {self.agent_dir}")
+        print(f"[ENV] Agent reset to position: {self.agent_pos} with direction: {self.agent_dir}")
+        self.cumulative_reward = 0
 
         return obs, info
 
