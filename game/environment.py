@@ -215,6 +215,7 @@ class PacmanEnv(MiniGridEnv):
         - Reward for reaching the pellet (+50)
         - Penalty for hitting a ghost (-100)
         - Penalty if the new distance to the nearest pellet is greater than the current distance (-1)
+        - Penalty if the agent is not facing the nearest pellet (-1)
         :param action: The action to execute (0: turn left, 1: turn right, 2: move forward)
         :return: Tuple (reward, terminated)
         """
@@ -250,11 +251,6 @@ class PacmanEnv(MiniGridEnv):
         nearest_pellet_abs_pos = np.array(self.agent_pos) + np.array(nearest_pellet_pos)
         current_distance = np.linalg.norm(np.array(self.agent_pos) - nearest_pellet_abs_pos)
 
-        # Calculate the nearest pellet position before action
-        nearest_pellet_pos = self._nearest_pellet()
-        nearest_pellet_abs_pos = np.array(self.agent_pos) + np.array(nearest_pellet_pos)
-        current_distance = np.linalg.norm(np.array(self.agent_pos) - nearest_pellet_abs_pos)
-
         # Calculate new position and direction based on the action
         new_agent_pos = np.array(self.agent_pos)
         new_agent_dir = self.agent_dir
@@ -267,11 +263,35 @@ class PacmanEnv(MiniGridEnv):
             new_agent_pos = new_agent_pos + DIR_TO_VEC[self.agent_dir]
 
         # Calculate the new front position and distance to the nearest pellet after the action
-        new_front_pos = new_agent_pos + DIR_TO_VEC[new_agent_dir]
         new_distance = np.linalg.norm(new_agent_pos - nearest_pellet_abs_pos)
 
+        # Adjusting the new distance if the action is forward and the agent is exactly at the pellet
+        if action == self.actions.forward and np.array_equal(new_agent_pos, nearest_pellet_abs_pos):
+            new_distance = 0  # No penalty if moving directly onto the pellet
+
         # Penalize if the new distance is greater than the current distance
-        if new_distance >= current_distance:
+        if new_distance > current_distance:
+            reward -= 1
+
+        # Penalize if the agent is not facing the nearest pellet
+        # Determine the direction from the agent to the nearest pellet
+        direction_to_pellet = np.array(nearest_pellet_pos)
+        direction_to_pellet = np.sign(direction_to_pellet)  # Get the direction vector in terms of unit steps
+
+        # Map the direction vector to one of the cardinal directions (0: right, 1: down, 2: left, 3: up)
+        if np.array_equal(direction_to_pellet, [1, 0]):
+            desired_direction = 0  # Right
+        elif np.array_equal(direction_to_pellet, [0, 1]):
+            desired_direction = 1  # Down
+        elif np.array_equal(direction_to_pellet, [-1, 0]):
+            desired_direction = 2  # Left
+        elif np.array_equal(direction_to_pellet, [0, -1]):
+            desired_direction = 3  # Up
+        else:
+            desired_direction = self.agent_dir  # If pellet is on the agent or direction is indeterminate
+
+        # Penalize if the agent's direction is not facing towards the nearest pellet
+        if new_agent_dir != desired_direction:
             reward -= 1
 
         return reward, terminated

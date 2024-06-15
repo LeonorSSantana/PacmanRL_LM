@@ -110,13 +110,10 @@ class SplashScreen:
             # Handle splash screen events
             if event.type == pygame.USEREVENT and event.user_type == pygame_gui.UI_BUTTON_PRESSED:
                 if event.ui_element == self.btn_train_rl:
-                    print("[SPLASH SCREEN] Training RL...")
                     self.start_game('Training')
                 elif event.ui_element == self.btn_test_rl:
-                    print("[SPLASH SCREEN] Testing RL...")
                     self.start_game('Testing')
                 elif event.ui_element == self.btn_manual:
-                    print("[SPLASH SCREEN] Manual Mode")
                     self.start_game('Manual')
                 elif event.ui_element == self.btn_options:
                     if self.options_window is None or self.options_window_killed:
@@ -144,6 +141,8 @@ class SplashScreen:
         settings = self.game_settings if self.game_settings else {}
         settings['mode'] = mode
         settings['algorithm'] = 'Q-Learning' if settings.get('algorithm') is None else settings['algorithm']
+
+        print(f"[SPLASH SCREEN] Starting {mode} session.")
 
         # Clean up before starting the game
         pygame.quit()

@@ -20,7 +20,7 @@ class Game:
             'algorithm': None,  # None means no specific algorithm chosen
             'speed': 60,  # Frames per second
             'deterministic': True,
-            'epsilon': 0.1,
+            'epsilon': 1.0,
             'epsilon_decay': 0.995,
             'gamma': 0.9,
             'alpha': 0.1,
@@ -30,8 +30,6 @@ class Game:
         self.clock = pygame.time.Clock()
 
     def start_game(self, **kwargs):
-        print("[GAME] Starting game...")
-
         # Apply settings, using defaults for any missing values
         self.game_settings = {**self.default_settings, **kwargs}
 
