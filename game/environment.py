@@ -38,16 +38,21 @@ class PacmanEnv(MiniGridEnv):
         self.agent_start_pos = agent_start_pos
         self.agent_start_dir = agent_start_dir
         self.cumulative_reward = 0
-        self.n_pellets = n_pellets
         self.mode = mode
         self.algorithm = algorithm
         self.seed = seed
         self.frames_per_second = frames_per_second
 
+        # Environment-specific properties
+        self.action_space = Discrete(3)  # Actions: turn left, turn right, move forward
+        self.n_ghosts = n_ghosts
+        self.n_pellets = n_pellets
+        self.remaining_pellets = n_pellets
+
         # Define the mission string
-        self.mission_string = f"Mode: {self.mode}        Cumulative Reward: {self.cumulative_reward}        Pellets: {self.n_pellets}" \
+        self.mission_string = f"Mode: {self.mode}        Cumulative Reward: {self.cumulative_reward}        Pellets: {self.remaining_pellets}" \
             if self.mode == "Manual" else \
-            f"Algorithm: {self.algorithm}        Cumulative Reward: {self.cumulative_reward}        Pellets: {self.n_pellets}"
+            f"Algorithm: {self.algorithm}        Cumulative Reward: {self.cumulative_reward}        Pellets: {self.remaining_pellets}"
 
         # Define the mission
         mission_space = MissionSpace(mission_func=lambda: self.mission_string)
@@ -64,12 +69,6 @@ class PacmanEnv(MiniGridEnv):
             highlight=False,
             **kwargs
         )
-
-        # Environment-specific properties
-        # self.action_space = Discrete(4)  # Actions: turn left, turn right, move forward and pick up pellet
-        self.action_space = Discrete(3)  # Actions: turn left, turn right, move forward
-        self.n_ghosts = n_ghosts
-        self.n_pellets = n_pellets
 
         # Load custom images
         self.pacman_image = pygame.image.load(PACMAN_IMAGE_PATH).convert_alpha()
@@ -234,7 +233,7 @@ class PacmanEnv(MiniGridEnv):
         if current_cell and current_cell.type == 'goal':
             reward += 50
             self.grid.set(self.agent_pos[0], self.agent_pos[1], None)
-            self.n_pellets -= 1
+            self.remaining_pellets -= 1
 
         # Penalty for hitting a ghost
         if any(obstacle.cur_pos == self.agent_pos for obstacle in self.obstacles):
@@ -340,9 +339,9 @@ class PacmanEnv(MiniGridEnv):
             self.close()
 
         # Update the mission text to reflect the new reward
-        self.mission = f"Mode: {self.mode}        Cumulative Reward: {self.cumulative_reward}        Pellets: {self.n_pellets}" \
+        self.mission = f"Mode: {self.mode}        Cumulative Reward: {self.cumulative_reward}        Pellets: {self.remaining_pellets}" \
             if self.mode == "Manual" else \
-            f"Algorithm: {self.algorithm}        Cumulative Reward: {self.cumulative_reward}        Pellets: {self.n_pellets}"
+            f"Algorithm: {self.algorithm}        Cumulative Reward: {self.cumulative_reward}        Pellets: {self.remaining_pellets}"
 
         return obs, reward, terminated, truncated, info
 
@@ -354,6 +353,7 @@ class PacmanEnv(MiniGridEnv):
         self.agent_pos = self.agent_start_pos
         self.agent_dir = self.agent_start_dir
         self.cumulative_reward = 0
+        self.remaining_pellets = self.n_pellets
 
         return obs, info
 
