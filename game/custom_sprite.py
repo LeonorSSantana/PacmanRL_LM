@@ -7,7 +7,7 @@ class CustomSprite(WorldObj):
         """
         Initialize a CustomSprite with a given object type and custom image.
         """
-        super(CustomSprite, self).__init__(obj.type, color)
+        super().__init__(obj.type, color)
         self.obj = obj
         self.image = image
 
