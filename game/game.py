@@ -1,6 +1,7 @@
 import sys
 import pygame
-from agents.q_learning import QLearning
+from agents.q_learning_solution import QLearning
+from agents.sarsa_solution import SARSA
 from .environment import PacmanEnv
 from minigrid.manual_control import ManualControl
 
@@ -71,8 +72,8 @@ class Game:
             manual_control = ManualControl(self.env)
             manual_control.start()
 
-        # Train the agent using Q-Learning
-        elif self.game_settings['mode'] == "Training":
+        # Start the game in Training mode
+        if self.game_settings['mode'] == "Training":
             if self.game_settings['algorithm'] == 'Q-Learning':
                 print("[GAME] Training Q-Learning agent...")
                 q_learning_agent = QLearning(
@@ -83,16 +84,33 @@ class Game:
                     alpha=self.game_settings['alpha']
                 )
                 q_learning_agent.train(num_episodes=self.game_settings['num_episodes'])
-                q_learning_agent.save_q_table(filename='models/q_table.pkl')
+                q_learning_agent.save_q_table(filename='models/q_learning.pkl')
+                self.game_started = False
+            elif self.game_settings['algorithm'] == 'SARSA':
+                print("[GAME] Training SARSA agent...")
+                sarsa_agent = SARSA(
+                    self.env,
+                    epsilon=self.game_settings['epsilon'],
+                    epsilon_decay=self.game_settings['epsilon_decay'],
+                    gamma=self.game_settings['gamma'],
+                    alpha=self.game_settings['alpha']
+                )
+                sarsa_agent.train(num_episodes=self.game_settings['num_episodes'])
+                sarsa_agent.save_q_table(filename='models/sarsa.pkl')
                 self.game_started = False
 
-        # Test the agent using Q-Learning
+        # Start the game in Testing mode
         elif self.game_settings['mode'] == "Testing":
             if self.game_settings['algorithm'] == 'Q-Learning':
                 print("[GAME] Testing Q-Learning agent...")
                 q_learning_agent = QLearning(self.env)
-                q_learning_agent.load_q_table(filename='models/q_table.pkl')
+                q_learning_agent.load_q_table(filename='models/q_learning.pkl')
                 q_learning_agent.test(num_episodes=100)
+            elif self.game_settings['algorithm'] == 'SARSA':
+                print("[GAME] Testing SARSA agent...")
+                sarsa_agent = SARSA(self.env)
+                sarsa_agent.load_q_table(filename='models/sarsa.pkl')
+                sarsa_agent.test(num_episodes=100)
 
     def handle_events(self, event):
         if event.type == pygame.KEYDOWN:
