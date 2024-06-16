@@ -1,7 +1,7 @@
 import sys
 import pygame
-from agents.q_learning_solution import QLearning
-from agents.sarsa_solution import SARSA
+from agents.q_learning import QLearning
+from agents.sarsa import SARSA
 from .environment import PacmanEnv
 from minigrid.manual_control import ManualControl
 
