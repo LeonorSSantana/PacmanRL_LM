@@ -1,4 +1,4 @@
-# Pacman RL - Reinforcement Learning for Pacman 🎮
+# PacmanRL - Reinforcement Learning for Pacman 🎮
 
 ## Introduction
 Welcome to PacmanRL, an academic project designed for the curricular unit of Unsupervised Learning. This project combines the classic Pacman game with the field of Reinforcement Learning (RL). The aim is to provide students with hands-on experience in developing and implementing RL algorithms, specifically Q-Learning and SARSA, to control Pacman.
@@ -11,6 +11,7 @@ The primary goal of PacmanRL is to create an RL agent that learns optimal strate
 - Main Libraries:
   - Pygame: A set of Python modules designed for writing video games.
   - Gymnasium: A toolkit for developing and comparing reinforcement learning algorithms.
+  - MiniGrid: A minimalistic gridworld environment for reinforcement learning.
 
 ## Project Structure
 - `main.py`: Entry point of the game.
@@ -24,7 +25,7 @@ To configure your project, you need to clone the repository, set up your develop
 ### Steps:
 1. Clone the repository:
 ```bash
-git clone https://github.com/YourUsername/PacmanRL
+git clone https://github.com/Sphincz/PacmanRL
 ```
 
 2. Navigate to the project directory:
