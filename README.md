@@ -50,4 +50,3 @@ python main.py
 - **CA4**: Demonstration of a profound understanding of reinforcement learning principles and their application in game strategy optimization.
 - **CA5**: Creative approaches and solutions to challenges encountered during development.
 - **CA6**: Presentation and defense of the project in the final evaluation session.
-```
