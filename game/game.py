@@ -1,7 +1,7 @@
 import sys
 import pygame
-from agents.q_learning import QLearning
-from agents.sarsa import SARSA
+from agents.q_learning_solution import QLearning
+from agents.sarsa_solution import SARSA
 from .environment import PacmanEnv
 from minigrid.manual_control import ManualControl
 
@@ -23,8 +23,8 @@ class Game:
             'deterministic': True,
             'epsilon': 1.0,
             'epsilon_decay': 0.995,
-            'gamma': 0.9,
-            'alpha': 0.1,
+            'discount_factor': 0.9,
+            'learning_rate': 0.1,
             'num_episodes': 1000
         }
 
