@@ -46,8 +46,8 @@ class Game:
               f"-> Num Episodes={self.game_settings['num_episodes']}\n"
               f"-> Epsilon={self.game_settings['epsilon']}\n"
               f"-> Epsilon Decay={self.game_settings['epsilon_decay']}\n"
-              f"-> Discount Factor={self.game_settings['gamma']}\n"
-              f"-> Learning Rate={self.game_settings['alpha']}\n")
+              f"-> Discount Factor={self.game_settings['discount_factor']}\n"
+              f"-> Learning Rate={self.game_settings['learning_rate']}\n")
 
         # Close the current Pygame window if open
         pygame.quit()
@@ -80,8 +80,8 @@ class Game:
                     self.env,
                     epsilon=self.game_settings['epsilon'],
                     epsilon_decay=self.game_settings['epsilon_decay'],
-                    gamma=self.game_settings['gamma'],
-                    alpha=self.game_settings['alpha']
+                    gamma=self.game_settings['discount_factor'],
+                    alpha=self.game_settings['learning_rate']
                 )
                 q_learning_agent.train(num_episodes=self.game_settings['num_episodes'])
                 q_learning_agent.save_q_table(filename='models/q_learning.pkl')
@@ -92,8 +92,8 @@ class Game:
                     self.env,
                     epsilon=self.game_settings['epsilon'],
                     epsilon_decay=self.game_settings['epsilon_decay'],
-                    gamma=self.game_settings['gamma'],
-                    alpha=self.game_settings['alpha']
+                    gamma=self.game_settings['discount_factor'],
+                    alpha=self.game_settings['learning_rate']
                 )
                 sarsa_agent.train(num_episodes=self.game_settings['num_episodes'])
                 sarsa_agent.save_q_table(filename='models/sarsa.pkl')
