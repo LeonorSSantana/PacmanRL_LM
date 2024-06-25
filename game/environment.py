@@ -44,7 +44,6 @@ class PacmanEnv(MiniGridEnv):
         self.frames_per_second = frames_per_second
 
         # Environment-specific properties
-        self.action_space = Discrete(3)  # Actions: turn left, turn right, move forward
         self.n_ghosts = n_ghosts
         self.n_pellets = n_pellets
         self.remaining_pellets = n_pellets
@@ -69,12 +68,12 @@ class PacmanEnv(MiniGridEnv):
             highlight=False,
             **kwargs
         )
+        self.action_space = Discrete(3)  # Actions: turn left, turn right, move forward
 
         # Load custom images
         self.pacman_image = pygame.image.load(PACMAN_IMAGE_PATH).convert_alpha()
         self.pellet_image = pygame.image.load(PELLET_IMAGE_PATH).convert_alpha()
-        self.ghost_images = {color: pygame.image.load(path).convert_alpha() for color, path in
-                             GHOST_IMAGE_PATHS.items()}
+        self.ghost_images = {color: pygame.image.load(path).convert_alpha() for color, path in GHOST_IMAGE_PATHS.items()}
         self.agent_image = pygame.transform.rotate(self.pacman_image, -90 * self.agent_start_dir)
 
     def _gen_grid(self, width, height):
