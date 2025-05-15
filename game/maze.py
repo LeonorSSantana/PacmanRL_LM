@@ -4,10 +4,10 @@ maze_walls = [
     (23, 1, 23, 'vertical'),
 
     # Inner walls
-    (3, 3, 7, 'horizontal'),
+    (3, 3, 8, 'horizontal'),
     (3, 3, 8, 'vertical'),
 
-    (3, 20, 7, 'horizontal'),
+    (3, 20, 8, 'horizontal'),
     (3, 13, 8, 'vertical'),
 
     (13, 3, 7, 'horizontal'),
