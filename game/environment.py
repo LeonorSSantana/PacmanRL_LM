@@ -152,7 +152,6 @@ class PacmanEnv(MiniGridEnv):
             'agent_pos': self.agent_pos,
             'agent_dir': self.agent_dir,
             'nearest_pellet': self._nearest_pellet(),
-            'nearest_ghost': self._nearest_ghost(),
         }
         # Convert dictionary to a sorted tuple of items to make it hashable
         return tuple(sorted(state.items()))
@@ -225,23 +224,23 @@ class PacmanEnv(MiniGridEnv):
 
         # Check if the agent attempts to move into a wall
         if action == self.actions.forward and front_cell is not None and front_cell.type == 'wall':
-            reward -= 1
+            reward -= 5
 
         # Reward for reaching the pellet
         current_cell = self.grid.get(*self.agent_pos)
         if current_cell and current_cell.type == 'goal':
-            reward += 50
+            reward += 100
             self.grid.set(self.agent_pos[0], self.agent_pos[1], None)
             self.remaining_pellets -= 1
 
         # Penalty for hitting a ghost
         if any(obstacle.cur_pos == self.agent_pos for obstacle in self.obstacles):
-            reward -= 100
+            reward -= 2000
             terminated = True
 
         # Penalty if front cell is a ghost
         if front_cell is not None and front_cell.type == 'lava':
-            reward -= 100
+            reward -= 2000
             terminated = True
 
         # Calculate the nearest pellet position before action
@@ -270,6 +269,8 @@ class PacmanEnv(MiniGridEnv):
         # Penalize if the new distance is greater than the current distance
         if new_distance > current_distance:
             reward -= 1
+        elif new_distance < current_distance:
+            reward += 1
 
         # Penalize if the agent is not facing the nearest pellet
         # Determine the direction from the agent to the nearest pellet
@@ -291,6 +292,10 @@ class PacmanEnv(MiniGridEnv):
         # Penalize if the agent's direction is not facing towards the nearest pellet
         if new_agent_dir != desired_direction:
             reward -= 1
+
+        # Terminate if all the pellets are collected
+        if self.remaining_pellets == 0:
+            terminated = True
 
         return reward, terminated
 
@@ -348,8 +353,22 @@ class PacmanEnv(MiniGridEnv):
         # Call the parent reset method which initializes everything
         obs, info = super().reset(seed=self.seed, options=options)
 
-        # Ensure the agent position and direction are initialized
-        self.agent_pos = self.agent_start_pos
+        # Create a list of available positions
+        available_positions = [
+            (x, y)
+            for x in range(self.grid.width)
+            for y in range(self.grid.height)
+            if self.grid.get(x, y) is None
+        ]
+
+        # Filter out positions occupied by ghosts
+        ghost_positions = {obstacle.cur_pos for obstacle in self.obstacles}
+        available_positions = [
+            pos for pos in available_positions if pos not in ghost_positions
+        ]
+
+        # Randomly select a new position for the agent from the available positions
+        self.agent_pos = random.choice(available_positions)
         self.agent_dir = self.agent_start_dir
         self.cumulative_reward = 0
         self.remaining_pellets = self.n_pellets
