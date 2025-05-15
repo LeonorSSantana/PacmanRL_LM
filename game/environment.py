@@ -9,7 +9,9 @@ from minigrid.core.grid import Grid
 from minigrid.core.mission import MissionSpace
 from minigrid.core.world_object import Goal, Wall, Lava
 from minigrid.minigrid_env import MiniGridEnv
+
 import pygame
+from pygame import freetype
 
 from .custom_sprite import CustomSprite
 from .maze import maze_walls
@@ -423,7 +425,7 @@ class PacmanEnv(MiniGridEnv):
 
             font_size = 22
             text = self.mission
-            font = pygame.freetype.SysFont("Calibri", font_size)
+            font = freetype.SysFont("Calibri", font_size)
             text_rect = font.get_rect(text, size=font_size)
             text_rect.center = bg.get_rect().center
             text_rect.y = bg.get_height() - font_size * 1.5
