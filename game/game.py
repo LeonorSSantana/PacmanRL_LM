@@ -66,6 +66,7 @@ class Game:
             frames_per_second=self.game_settings['speed'],
             seed=1 if self.game_settings['deterministic'] else None
         )
+        print("Action Space:", self.env.action_space)
 
         # Start the game in Manual mode
         if self.game_settings['mode'] == "Manual":
@@ -84,7 +85,7 @@ class Game:
                     alpha=self.game_settings['learning_rate']
                 )
                 q_learning_agent.train(num_episodes=self.game_settings['num_episodes'])
-                q_learning_agent.save_q_table(filename='models/q_learning.pkl')
+                q_learning_agent.save_q_table(filename='models/q_learning_solution.pkl')
                 self.game_started = False
             elif self.game_settings['algorithm'] == 'SARSA':
                 print("[GAME] Training SARSA agent...")
@@ -96,7 +97,7 @@ class Game:
                     alpha=self.game_settings['learning_rate']
                 )
                 sarsa_agent.train(num_episodes=self.game_settings['num_episodes'])
-                sarsa_agent.save_q_table(filename='models/sarsa.pkl')
+                sarsa_agent.save_q_table(filename='models/sarsa_solution.pkl')
                 self.game_started = False
 
         # Start the game in Testing mode
@@ -104,13 +105,13 @@ class Game:
             if self.game_settings['algorithm'] == 'Q-Learning':
                 print("[GAME] Testing Q-Learning agent...")
                 q_learning_agent = QLearning(self.env)
-                q_learning_agent.load_q_table(filename='models/q_learning.pkl')
-                q_learning_agent.test(num_episodes=100)
+                q_learning_agent.load_q_table(filename='models/q_learning_solution.pkl')
+                q_learning_agent.test(num_episodes=10)
             elif self.game_settings['algorithm'] == 'SARSA':
                 print("[GAME] Testing SARSA agent...")
                 sarsa_agent = SARSA(self.env)
-                sarsa_agent.load_q_table(filename='models/sarsa.pkl')
-                sarsa_agent.test(num_episodes=100)
+                sarsa_agent.load_q_table(filename='models/sarsa_solution.pkl')
+                sarsa_agent.test(num_episodes=10)
 
     def handle_events(self, event):
         if event.type == pygame.KEYDOWN:
