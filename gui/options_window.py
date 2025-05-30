@@ -38,9 +38,9 @@ class OptionsWindow:
         self.speed = 60  # FPS
         self.deterministic = True
         self.num_episodes = 1000
-        self.epsilon = 1.0
+        self.epsilon = 0.5
         self.epsilon_decay = 0.995
-        self.learning_rate = 0.1
+        self.learning_rate = 0.2
         self.discount_factor = 0.99  # Default discount factor
 
     def show(self):
