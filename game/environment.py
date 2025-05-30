@@ -227,14 +227,14 @@ class PacmanEnv(MiniGridEnv):
 
         # Check if the agent attempts to move into a wall
         if action == self.actions.forward and front_cell is not None and front_cell.type == 'wall':
-            reward -= 2
+            reward -= 1
 
         # Reward for reaching the pellet
         current_cell = self.grid.get(*self.agent_pos)
         if current_cell and current_cell.type == 'goal':
-            reward += 200
+            reward += 100
             if getattr(self, 'last_reward_was_pellet', False):
-                reward += 50  # bónus por apanhar pellets seguidos ADICIONADO
+                reward += 25  # bónus por apanhar pellets seguidos ADICIONADO
             self.last_reward_was_pellet = True
 
             self.grid.set(self.agent_pos[0], self.agent_pos[1], None)
@@ -244,12 +244,12 @@ class PacmanEnv(MiniGridEnv):
 
         # Penalty for hitting a ghost
         if any(obstacle.cur_pos == self.agent_pos for obstacle in self.obstacles):
-            reward -= 500
+            reward -= 50
             terminated = True
 
         # Penalty if front cell is a ghost
         if front_cell is not None and front_cell.type == 'lava':
-            reward -= 500
+            reward -= 50
             terminated = True
 
         # Calculate the nearest pellet position before action
@@ -277,9 +277,9 @@ class PacmanEnv(MiniGridEnv):
 
         # Penalize if the new distance is greater than the current distance
         if new_distance > current_distance:
-            reward -= 2
+            reward -= 1
         elif new_distance < current_distance:
-            reward += 4
+            reward += 2
 
         # Penalize if the agent is not facing the nearest pellet
         # Determine the direction from the agent to the nearest pellet
@@ -300,8 +300,6 @@ class PacmanEnv(MiniGridEnv):
 
         # Penalize if the agent's direction is not facing towards the nearest pellet
         if new_agent_dir != desired_direction:
-            reward -= 1
-        if new_agent_dir != desired_direction:
             reward -= 0.5  # penalização menor por direção ineficiente
         
         # Penalização por proximidade de fantasmas
@@ -311,7 +309,7 @@ class PacmanEnv(MiniGridEnv):
 
 
         if ghost_distance < 1.5:
-            reward -= 3
+            reward -= 2
         elif ghost_distance < 2.5:
             reward -= 1
 
