@@ -222,6 +222,14 @@ class PacmanEnv(MiniGridEnv):
         reward = -0.5  # Penalty for each step ALTERADO DE 1 PARA 0.5
         terminated = False
 
+        # Inicializar estruturas se necessário
+        if not hasattr(self, 'visited_positions'):
+            self.visited_positions = set()
+        if not hasattr(self, 'pellet_streak'):
+            self.pellet_streak = 0
+        if not hasattr(self, 'survival_steps'):
+            self.survival_steps = 0
+
         # Helper variables
         front_cell = self.grid.get(*self.front_pos)
 
@@ -233,14 +241,19 @@ class PacmanEnv(MiniGridEnv):
         current_cell = self.grid.get(*self.agent_pos)
         if current_cell and current_cell.type == 'goal':
             reward += 100
-            if getattr(self, 'last_reward_was_pellet', False):
-                reward += 25  # bónus por apanhar pellets seguidos ADICIONADO
+            self.pellet_streak += 1
+            reward += 10 * self.pellet_streak
             self.last_reward_was_pellet = True
 
             self.grid.set(self.agent_pos[0], self.agent_pos[1], None)
             self.remaining_pellets -= 1
         else:
             self.last_reward_was_pellet = False
+            self.pellet_streak = 0
+        if self.agent_pos not in self.visited_positions:
+            reward += 0.2
+            self.visited_positions.add(self.agent_pos)
+
 
         # Penalty for hitting a ghost
         if any(obstacle.cur_pos == self.agent_pos for obstacle in self.obstacles):
@@ -301,17 +314,25 @@ class PacmanEnv(MiniGridEnv):
         # Penalize if the agent's direction is not facing towards the nearest pellet
         if new_agent_dir != desired_direction:
             reward -= 0.5  # penalização menor por direção ineficiente
-        
+        else:
+            reward += 0.3
         # Penalização por proximidade de fantasmas
         ghost_rel = self._nearest_ghost()
         ghost_abs = np.array(self.agent_pos) + np.array(ghost_rel)
         ghost_distance = np.linalg.norm(np.array(self.agent_pos) - ghost_abs)
-
+        new_ghost_distance = np.linalg.norm(new_agent_pos - ghost_abs)
+        if new_ghost_distance > ghost_distance:
+            reward += 0.5
 
         if ghost_distance < 1.5:
             reward -= 2
         elif ghost_distance < 2.5:
             reward -= 1
+        
+        self.survival_steps += 1
+        if self.survival_steps % 20 == 0:
+            reward += 1
+
 
         # Bónus final se apanhar todos os pellets
         if self.remaining_pellets == 0:
