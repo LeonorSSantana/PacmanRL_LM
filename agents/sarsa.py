@@ -87,6 +87,7 @@ class SARSA:
         """
         self.set_epsilon_to_min()
         total_rewards = []
+        collected_pellets_all = []
 
         for episode in range(num_episodes):
             state = self.env.reset()[0]
@@ -102,8 +103,13 @@ class SARSA:
 
             total_rewards.append(episode_reward)
 
+            collected_pellets = 30 - self.env.remaining_pellets
+            collected_pellets_all.append(collected_pellets)
+            
         avg_reward = np.mean(total_rewards)
-        print(f"Recompensa média durante o teste: {avg_reward}")
+        avg_collected = np.mean(collected_pellets_all)
+        print(f"Recompensa média durante o teste: {round(avg_reward,2)}")
+        print(f"Média de pellets recolhidas durante o teste: {(avg_collected)}")
 
     def save_q_table(self, filename='models/sarsa.pkl'):
         """

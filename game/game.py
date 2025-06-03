@@ -54,7 +54,7 @@ class Game:
 
         # Initialize a new Pygame window
         pygame.init()
-        pygame.display.set_mode((640, 640))
+        pygame.display.set_mode((800, 800))
 
         # Initialize the Pacman Minigrid environment
         self.env = PacmanEnv(
