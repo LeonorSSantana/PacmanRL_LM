@@ -357,7 +357,7 @@ class PacmanEnv(MiniGridEnv):
         ghost_distance = np.linalg.norm(np.array(self.agent_pos) - ghost_abs)
 
         if ghost_distance < 1.5:
-            reward -= 1.5
+            reward -= 1.2
         elif ghost_distance < 2.5:
             reward -= 0.5
         elif ghost_distance >= 3:
