@@ -257,6 +257,14 @@ class PacmanEnv(MiniGridEnv):
         reward = -0.5 # Penalty for each step ALTERADO DE 1 PARA 0.5
         terminated = False
 
+        # Inicializar estruturas se necessário
+        if not hasattr(self, 'visited_positions'):
+            self.visited_positions = set()
+        if not hasattr(self, 'pellet_streak'):
+            self.pellet_streak = 0
+        if not hasattr(self, 'survival_steps'):
+            self.survival_steps = 0
+
         # Helper variables
         front_cell = self.grid.get(*self.front_pos)
 
