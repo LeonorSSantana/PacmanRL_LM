@@ -283,12 +283,12 @@ class PacmanEnv(MiniGridEnv):
 
         # Penalty for hitting a ghost
         if any(obstacle.cur_pos == self.agent_pos for obstacle in self.obstacles):
-            reward -= 70
+            reward -= 50
             terminated = True
 
         # Penalty if front cell is a ghost
         if front_cell is not None and front_cell.type == 'lava':
-            reward -= 70
+            reward -= 50
             terminated = True
 
         # Calculate the nearest pellet position before action
@@ -341,7 +341,7 @@ class PacmanEnv(MiniGridEnv):
 
         # Penalize if the agent's direction is not facing towards the nearest pellet
         if new_agent_dir != desired_direction:
-            reward -= 0.5  # penalização menor por direção ineficiente
+            reward -= 0.3  # penalização menor por direção ineficiente
         
         # Penalização por proximidade de fantasmas
         ghost_rel = self._nearest_ghost()
