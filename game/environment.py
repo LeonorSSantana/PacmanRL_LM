@@ -283,7 +283,7 @@ class PacmanEnv(MiniGridEnv):
 
         # Penalty for hitting a ghost
         if any(obstacle.cur_pos == self.agent_pos for obstacle in self.obstacles):
-            reward -= 49
+            reward -= 50
             terminated = True
 
         # Penalty if front cell is a ghost
