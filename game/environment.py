@@ -270,7 +270,7 @@ class PacmanEnv(MiniGridEnv):
             reward += 100
             if getattr(self, 'last_reward_was_pellet', False):
                 reward += 25 + 10 * getattr(self, 'pellets_in_a_row', 0)
-                self.pellets_in_a_row += 1  # bónus por apanhar pellets seguidos ADICIONADO
+                self.pellets_in_a_row += 1  # bónus por apanhar pellets seguidos ADICIONADOo
             else:
                 self.pellets_in_a_row = 1
             self.last_reward_was_pellet = True
@@ -283,7 +283,7 @@ class PacmanEnv(MiniGridEnv):
 
         # Penalty for hitting a ghost
         if any(obstacle.cur_pos == self.agent_pos for obstacle in self.obstacles):
-            reward -= 50
+            reward -= 49
             terminated = True
 
         # Penalty if front cell is a ghost
