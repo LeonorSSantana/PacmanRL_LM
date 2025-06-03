@@ -45,6 +45,11 @@ class PacmanEnv(MiniGridEnv):
         self.algorithm = algorithm
         self.seed = seed
         self.frames_per_second = frames_per_second
+        self.visited_positions = set()
+        self.position_history = deque(maxlen=10)
+        self.pellets_in_a_row = 0
+        self.predicted_ghost_path = []
+
 
         # Environment-specific properties
         self.n_ghosts = n_ghosts
@@ -206,6 +211,36 @@ class PacmanEnv(MiniGridEnv):
         Calculate the relative position of the nearest ghost.
         """
         return self.bfs_nearest_object(self.agent_pos, self.grid, 'lava')
+    
+    #NOVOS METODOS
+
+    def _is_valid_position(self, pos):
+        if not self.__is_in_bounds(pos):
+            return False
+        cell = self.grid.get(pos[0], pos[1])
+        if cell is None:
+            return False
+        if cell.type == 'wall':  # ou cell.type == Wall() dependendo de como é sua grid
+            return False
+        return True
+
+    def _is_dead_end(self, pos):
+        # pos é uma tupla (x, y)
+        possible_moves = 0
+        for direction_vec in DIR_TO_VEC:
+            neighbor = (pos[0] + direction_vec[0], pos[1] + direction_vec[1])
+            if self._is_valid_position(neighbor):
+                possible_moves += 1
+        return possible_moves <= 1
+
+    def _is_open_area(self, pos):
+        possible_moves = 0
+        for direction_vec in DIR_TO_VEC:
+            neighbor = (pos[0] + direction_vec[0], pos[1] + direction_vec[1])
+            if self._is_valid_position(neighbor):
+                possible_moves += 1
+        return possible_moves >= 3
+    
 
     def __calculate_rewards(self, action):
         """
@@ -219,7 +254,7 @@ class PacmanEnv(MiniGridEnv):
         :param action: The action to execute (0: turn left, 1: turn right, 2: move forward)
         :return: Tuple (reward, terminated)
         """
-        reward = -0.5  # Penalty for each step ALTERADO DE 1 PARA 0.5
+        reward = -0.5 # Penalty for each step ALTERADO DE 1 PARA 0.5
         terminated = False
 
         # Helper variables
@@ -227,29 +262,33 @@ class PacmanEnv(MiniGridEnv):
 
         # Check if the agent attempts to move into a wall
         if action == self.actions.forward and front_cell is not None and front_cell.type == 'wall':
-            reward -= 1
+            reward -= 0.5
 
         # Reward for reaching the pellet
         current_cell = self.grid.get(*self.agent_pos)
         if current_cell and current_cell.type == 'goal':
             reward += 100
             if getattr(self, 'last_reward_was_pellet', False):
-                reward += 25  # bónus por apanhar pellets seguidos ADICIONADO
+                reward += 25 + 10 * getattr(self, 'pellets_in_a_row', 0)
+                self.pellets_in_a_row += 1  # bónus por apanhar pellets seguidos ADICIONADO
+            else:
+                self.pellets_in_a_row = 1
             self.last_reward_was_pellet = True
-
             self.grid.set(self.agent_pos[0], self.agent_pos[1], None)
             self.remaining_pellets -= 1
         else:
             self.last_reward_was_pellet = False
+            self.pellets_in_a_row = 0
+
 
         # Penalty for hitting a ghost
         if any(obstacle.cur_pos == self.agent_pos for obstacle in self.obstacles):
-            reward -= 50
+            reward -= 70
             terminated = True
 
         # Penalty if front cell is a ghost
         if front_cell is not None and front_cell.type == 'lava':
-            reward -= 50
+            reward -= 70
             terminated = True
 
         # Calculate the nearest pellet position before action
@@ -268,6 +307,8 @@ class PacmanEnv(MiniGridEnv):
         elif action == self.actions.forward:
             new_agent_pos = new_agent_pos + DIR_TO_VEC[self.agent_dir]
 
+        new_agent_pos_tuple = tuple(new_agent_pos)
+
         # Calculate the new front position and distance to the nearest pellet after the action
         new_distance = np.linalg.norm(new_agent_pos - nearest_pellet_abs_pos)
 
@@ -277,9 +318,9 @@ class PacmanEnv(MiniGridEnv):
 
         # Penalize if the new distance is greater than the current distance
         if new_distance > current_distance:
-            reward -= 1
+            reward -= 0.5
         elif new_distance < current_distance:
-            reward += 2
+            reward += 1
 
         # Penalize if the agent is not facing the nearest pellet
         # Determine the direction from the agent to the nearest pellet
@@ -307,11 +348,32 @@ class PacmanEnv(MiniGridEnv):
         ghost_abs = np.array(self.agent_pos) + np.array(ghost_rel)
         ghost_distance = np.linalg.norm(np.array(self.agent_pos) - ghost_abs)
 
-
         if ghost_distance < 1.5:
-            reward -= 2
+            reward -= 1.5
         elif ghost_distance < 2.5:
+            reward -= 0.5
+        elif ghost_distance >= 3:
+            reward += 1
+
+        # Exploração de novas áreas
+        if new_agent_pos_tuple not in self.visited_positions:
+            reward += 2
+            self.visited_positions.add(new_agent_pos_tuple)
+
+        # Penalidade por repetir posições
+        self.position_history.append(new_agent_pos_tuple)
+        if self.position_history.count(new_agent_pos_tuple) > 3:
             reward -= 1
+
+        # Penalidade por becos e bônus por áreas abertas
+        if self._is_dead_end(new_agent_pos_tuple):
+            reward -= 0.5
+        elif self._is_open_area(new_agent_pos_tuple):
+            reward += 1
+
+        # Evitou rota prevista de fantasma
+        if self.predicted_ghost_path and new_agent_pos_tuple not in self.predicted_ghost_path[:2]:
+            reward += 1
 
         # Bónus final se apanhar todos os pellets
         if self.remaining_pellets == 0:
@@ -329,54 +391,31 @@ class PacmanEnv(MiniGridEnv):
         # Invalid action check
         if action not in self.action_space:
             action = 0
+        
+        # Primeiro, incrementa o contador de ações do agente
+        if not hasattr(self, 'agent_steps'):
+            self.agent_steps = 0
+        self.agent_steps += 1
 
         # Update obstacle (ghost) positions without diagonal movement
-        for obstacle in self.obstacles:
-            old_pos = obstacle.cur_pos
-            #PUS OS FANTASMAS A ANDAR ATRAS DELE MAS FICOU BUE DIFICIL
-            #last_pos = getattr(obstacle, 'last_pos', None)
-        
-            # Calcular distâncias para o Pacman para cada direção válida
-            #directions = [(0, -1), (0, 1), (-1, 0), (1, 0)]
-            #moves = []
+        if self.agent_steps >= 50:
+            for obstacle in self.obstacles:
+                old_pos = obstacle.cur_pos
 
-            #for move in directions:
-                #new_pos = tuple(map(add, old_pos, move))
-                #if self.__is_in_bounds(new_pos) and self.grid.get(*new_pos) is None:
-                 # Evita voltar para a posição anterior
-                    #if new_pos == last_pos:
-                        #continue
+                #Determine a random direction for the ghost to move (up, down, left, or right)
+                directions = [(0, -1), (0, 1), (-1, 0), (1, 0)]
+                valid_move = False
 
-                    #dist = np.linalg.norm(np.array(new_pos) - np.array(self.agent_pos))
-                    #moves.append((move, dist))
+                while not valid_move and directions:
+                    move = random.choice(directions)
+                    directions.remove(move)
+                    new_pos = tuple(map(add, old_pos, move))
 
-            #if moves:
-                # Escolher o movimento que minimiza a distância para o Pacman
-                #best_move = min(moves, key=itemgetter(1))[0]
-                #new_pos = tuple(map(add, old_pos, best_move))
-                #self.grid.set(new_pos[0], new_pos[1], obstacle)
-                #self.grid.set(old_pos[0], old_pos[1], None)
-                #obstacle.cur_pos = new_pos
-                #obstacle.last_pos = old_pos
-            #else:
-                # Se não tiver outro movimento, pode voltar mesmo (ou ficar parado)
-                #obstacle.last_pos = None
-
-            #ESTE ERA O QUE JA ESTAVA ANTES
-            #Determine a random direction for the ghost to move (up, down, left, or right)
-            directions = [(0, -1), (0, 1), (-1, 0), (1, 0)]
-            valid_move = False
-
-            while not valid_move and directions:
-                move = random.choice(directions)
-                directions.remove(move)
-                new_pos = tuple(map(add, old_pos, move))
-
-                if self.__is_in_bounds(new_pos) and self.grid.get(*new_pos) is None:
-                    self.grid.set(new_pos[0], new_pos[1], obstacle)
-                    self.grid.set(old_pos[0], old_pos[1], None)
-                    obstacle.cur_pos = new_pos
-                    valid_move = True
+                    if self.__is_in_bounds(new_pos) and self.grid.get(*new_pos) is None:
+                        self.grid.set(new_pos[0], new_pos[1], obstacle)
+                        self.grid.set(old_pos[0], old_pos[1], None)
+                        obstacle.cur_pos = new_pos
+                        valid_move = True
 
         # Update agent's position/direction
         obs, reward, terminated, truncated, info = super().step(action)
@@ -393,9 +432,9 @@ class PacmanEnv(MiniGridEnv):
             self.close()
 
         # Update the mission text to reflect the new reward
-        self.mission = f"Mode: {self.mode}        Cumulative Reward: {self.cumulative_reward}        Pellets: {self.remaining_pellets}" \
+        self.mission = f"Mode: {self.mode}        Cumulative Reward: {round(self.cumulative_reward,2)}        Pellets: {self.remaining_pellets}" \
             if self.mode == "Manual" else \
-            f"Algorithm: {self.algorithm}        Cumulative Reward: {self.cumulative_reward}        Pellets: {self.remaining_pellets}"
+            f"Algorithm: {self.algorithm}        Cumulative Reward: {round(self.cumulative_reward,2)}        Pellets: {self.remaining_pellets}"
 
         return obs, reward, terminated, truncated, info
 
@@ -422,6 +461,7 @@ class PacmanEnv(MiniGridEnv):
         self.agent_dir = self.agent_start_dir
         self.cumulative_reward = 0
         self.remaining_pellets = self.n_pellets
+        self.agent_steps = 0
 
         return obs, info
 
