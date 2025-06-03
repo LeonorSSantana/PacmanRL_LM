@@ -82,15 +82,20 @@ class QLearning:
 
         return self.q_table
 
-
-
-    def test(self, num_episodes=100):
+    def test(self, num_episodes=100, load_model=True):
         """
         Run the environment using the learned policy to evaluate performance.
         :param num_episodes: Number of episodes to run for testing.
         """
-        self.set_epsilon_to_min()
+        if load_model:
+            try:
+                self.load_q_table()
+                print("[INFO] Q-table carregada com sucesso.")
+                print(f"[DEBUG] Tamanho da Q-table: {len(self.q_table)}")
+            except FileNotFoundError:
+                print("[WARNING] Ficheiro de Q-table não encontrado. A testar com Q-table vazia.")
 
+        self.epsilon = 0.0
         total_rewards = []
         collected_pellets_all = []
 
@@ -116,8 +121,7 @@ class QLearning:
         print(f"Média de pellets recolhidas durante o teste: {(avg_collected)}")
 
 
-
-    def save_q_table(self, filename='models/q_learning.pkl'):
+    def save_q_table(self, filename='models/q_learning_solution.pkl'):
         """
         Save the Q-table to a file using pickle.
         :param filename: Name of the file to save the Q-table to.
@@ -125,7 +129,7 @@ class QLearning:
         with open(filename, 'wb') as f:
             pickle.dump(self.q_table, f)
 
-    def load_q_table(self, filename='models/q_learning.pkl'):
+    def load_q_table(self, filename='models/q_learning_solution.pkl'):
         """
         Load the Q-table from a file using pickle.
         :param filename:

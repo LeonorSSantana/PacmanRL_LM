@@ -174,7 +174,7 @@ class PacmanEnv(MiniGridEnv):
         :return: The relative position of the nearest object or (0, 0) if none is found.
         """
         width, height = grid.width, grid.height
-        queue = deque([(agent_pos, 0)])  # Each entry is (position, distance)
+        queue = deque([(agent_pos, (0, 0))])  # Each entry is (position, distance)
         visited = set()
         visited.add(agent_pos)
 
@@ -186,17 +186,20 @@ class PacmanEnv(MiniGridEnv):
             # Check all adjacent cells
             for dx, dy in directions:
                 nx, ny = x + dx, y + dy
+                next_pos = (nx, ny)
 
-                if 0 <= nx < width and 0 <= ny < height and (nx, ny) not in visited:
+                if 0 <= nx < width and 0 <= ny < height and next_pos not in visited:
                     cell = grid.get(nx, ny)
-                    if cell is not None:
-                        if cell.type == target_type:
-                            return nx - agent_pos[0], ny - agent_pos[1]  # Return relative position
-                        if cell.type == 'wall':
-                            continue  # Skip walls
+                    # Skip walls only
+                    if cell is not None and cell.type == 'wall':
+                        continue
 
-                    visited.add((nx, ny))
-                    queue.append(((nx, ny), dist + 1))
+                    # Found the target
+                    if cell is not None and cell.type == target_type:
+                        return dist[0] + dx, dist[1] + dy  # Return relative to agent
+
+                    visited.add(next_pos)
+                    queue.append(((nx, ny), (dist[0] + dx,dist[1] + dy)))
 
         return 0, 0  # Return (0, 0) if no target object is found
 
@@ -260,6 +263,8 @@ class PacmanEnv(MiniGridEnv):
         # Inicializar estruturas se necessário
         if not hasattr(self, 'visited_positions'):
             self.visited_positions = set()
+        if not hasattr(self, 'position_history'):
+            self.position_history = []
         if not hasattr(self, 'pellet_streak'):
             self.pellet_streak = 0
         if not hasattr(self, 'survival_steps'):
@@ -278,7 +283,7 @@ class PacmanEnv(MiniGridEnv):
             reward += 100
             if getattr(self, 'last_reward_was_pellet', False):
                 reward += 25 + 10 * getattr(self, 'pellets_in_a_row', 0)
-                self.pellets_in_a_row += 1  # bónus por apanhar pellets seguidos ADICIONADOo
+                self.pellets_in_a_row += 1  # bónus por apanhar pellets seguidos ADICIONADO
             else:
                 self.pellets_in_a_row = 1
             self.last_reward_was_pellet = True
@@ -328,7 +333,7 @@ class PacmanEnv(MiniGridEnv):
         if new_distance > current_distance:
             reward -= 0.5
         elif new_distance < current_distance:
-            reward += 1
+            reward += (current_distance - new_distance) * 0.5  # bónus proporcional
 
         # Penalize if the agent is not facing the nearest pellet
         # Determine the direction from the agent to the nearest pellet
@@ -348,8 +353,8 @@ class PacmanEnv(MiniGridEnv):
             desired_direction = self.agent_dir  # If pellet is on the agent or direction is indeterminate
 
         # Penalize if the agent's direction is not facing towards the nearest pellet
-        if new_agent_dir != desired_direction:
-            reward -= 0.3  # penalização menor por direção ineficiente
+        if new_distance <= 3 and new_agent_dir != desired_direction:
+            reward -= 0.2  # penalização menor por direção ineficiente
         
         # Penalização por proximidade de fantasmas
         ghost_rel = self._nearest_ghost()
@@ -371,7 +376,7 @@ class PacmanEnv(MiniGridEnv):
         # Penalidade por repetir posições
         self.position_history.append(new_agent_pos_tuple)
         if self.position_history.count(new_agent_pos_tuple) > 3:
-            reward -= 1
+            reward -= 0.1
 
         # Penalidade por becos e bônus por áreas abertas
         if self._is_dead_end(new_agent_pos_tuple):
@@ -382,6 +387,12 @@ class PacmanEnv(MiniGridEnv):
         # Evitou rota prevista de fantasma
         if self.predicted_ghost_path and new_agent_pos_tuple not in self.predicted_ghost_path[:2]:
             reward += 1
+
+        if ghost_abs is not None:
+            new_ghost_distance = np.linalg.norm(new_agent_pos - ghost_abs)
+            if new_ghost_distance > ghost_distance:
+                reward += 0.5
+
 
         # Bónus final se apanhar todos os pellets
         if self.remaining_pellets == 0:
