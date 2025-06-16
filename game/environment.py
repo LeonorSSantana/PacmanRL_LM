@@ -49,6 +49,7 @@ class PacmanEnv(MiniGridEnv):
         self.position_history = deque(maxlen=10)
         self.pellets_in_a_row = 0
         self.predicted_ghost_path = []
+        self.current_episode = 0
 
 
         # Environment-specific properties
@@ -57,9 +58,9 @@ class PacmanEnv(MiniGridEnv):
         self.remaining_pellets = n_pellets
 
         # Define the mission string
-        self.mission_string = f"Mode: {self.mode}        Cumulative Reward: {self.cumulative_reward}        Pellets: {self.remaining_pellets}" \
+        self.mission_string = f"Mode: {self.mode}        Reward: {self.cumulative_reward}        Pellets: {self.remaining_pellets}" \
             if self.mode == "Manual" else \
-            f"Algorithm: {self.algorithm}        Cumulative Reward: {self.cumulative_reward}        Pellets: {self.remaining_pellets}"
+            f"Algorithm: {self.algorithm}       Reward: {self.cumulative_reward}        Pellets: {self.remaining_pellets}"
 
         # Define the mission
         mission_space = MissionSpace(mission_func=lambda: self.mission_string)
@@ -156,11 +157,21 @@ class PacmanEnv(MiniGridEnv):
         - Relative positions of the nearest pellet and ghost
         - Distance to the nearest wall
         """
+        agent_pos = self.agent_pos
+        agent_dir = self.agent_dir
+
+        pellet_rel = self._nearest_pellet()  # já retorna (dx, dy) relativo
+        ghost_rel = self._nearest_ghost()    # já retorna (dx, dy) relativo
+
+        dist_wall = self._distance_to_wall(agent_pos, agent_dir)
+
         state = {
-            'agent_pos': self.agent_pos,
-            'agent_dir': self.agent_dir,
-            'nearest_pellet': self._nearest_pellet(),
-        }
+            'agent_pos': agent_pos,
+            'agent_dir': agent_dir,
+            'pellet_rel': pellet_rel,
+            'ghost_rel': ghost_rel,
+            'dist_wall': dist_wall,
+            }
         # Convert dictionary to a sorted tuple of items to make it hashable
         return tuple(sorted(state.items()))
 
@@ -226,6 +237,30 @@ class PacmanEnv(MiniGridEnv):
         if cell.type == 'wall':  # ou cell.type == Wall() dependendo de como é sua grid
             return False
         return True
+    
+    def _distance_to_wall(self, pos, direction):
+        x, y = pos
+        dist = 0
+
+        while True:
+            if direction == 'UP':
+                y -= 1
+            elif direction == 'DOWN':
+                y += 1
+            elif direction == 'LEFT':
+                x -= 1
+            elif direction == 'RIGHT':
+                x += 1
+            else:
+                # Caso tenha outras direções, pode adicionar aqui
+                break
+
+            if not self._is_valid_position((x, y)):
+                break
+
+            dist += 1
+
+        return dist
 
     def _is_dead_end(self, pos):
         # pos é uma tupla (x, y)
@@ -451,9 +486,9 @@ class PacmanEnv(MiniGridEnv):
             self.close()
 
         # Update the mission text to reflect the new reward
-        self.mission = f"Mode: {self.mode}        Cumulative Reward: {round(self.cumulative_reward,2)}        Pellets: {self.remaining_pellets}" \
+        self.mission = f"Mode: {self.mode}      Episode: {self.current_episode}       Reward: {round(self.cumulative_reward,2)}        Pellets: {self.remaining_pellets}" \
             if self.mode == "Manual" else \
-            f"Algorithm: {self.algorithm}        Cumulative Reward: {round(self.cumulative_reward,2)}        Pellets: {self.remaining_pellets}"
+            f"Algorithm: {self.algorithm}       Episode: {self.current_episode}        Reward: {round(self.cumulative_reward,2)}        Pellets: {self.remaining_pellets}"
 
         return obs, reward, terminated, truncated, info
 

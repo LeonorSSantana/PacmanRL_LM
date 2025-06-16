@@ -54,7 +54,7 @@ class Game:
 
         # Initialize a new Pygame window
         pygame.init()
-        pygame.display.set_mode((800, 800))
+        pygame.display.set_mode((900, 900))
 
         # Initialize the Pacman Minigrid environment
         self.env = PacmanEnv(
@@ -106,7 +106,7 @@ class Game:
                 print("[GAME] Testing Q-Learning agent...")
                 q_learning_agent = QLearning(self.env)
                 q_learning_agent.load_q_table(filename='models/q_learning_solution.pkl')
-                q_learning_agent.test(num_episodes=10)
+                q_learning_agent.test(num_episodes=100)
             elif self.game_settings['algorithm'] == 'SARSA':
                 print("[GAME] Testing SARSA agent...")
                 sarsa_agent = SARSA(self.env)

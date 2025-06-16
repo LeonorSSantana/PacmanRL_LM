@@ -50,10 +50,16 @@ class QLearning:
         :param num_episodes: Number of episodes to train the agent for.
         :return: Q-table with learned state-action values.
         """
+
+        total_rewards = []
+        collected_pellets_all = []
+
         for episode in range(num_episodes):
             obs = self.env.reset()
             state = obs[0] if isinstance(obs, tuple) else obs
             state_key = self.state_to_key(state)
+            episode_reward = 0
+            self.env.current_episode = episode + 1
 
             done = False
 
@@ -75,10 +81,20 @@ class QLearning:
                 old_value = self.q_table[state_key][action]
                 self.q_table[state_key][action] = old_value + self.alpha * (reward + self.gamma * next_max - old_value)
 
+                episode_reward += reward
                 state = next_state
                 state_key = next_state_key
 
+            total_rewards.append(episode_reward)
+            collected_pellets = 30 - self.env.remaining_pellets  # Supondo que começa com 30
+            collected_pellets_all.append(collected_pellets)
+
             self.decay_epsilon()
+
+        avg_reward = np.mean(total_rewards)
+        avg_collected = np.mean(collected_pellets_all)
+        print(f"Recompensa média durante o treino: {round(avg_reward, 2)}")
+        print(f"Média de pellets recolhidas durante o treino: {round(avg_collected, 2)}")
 
         return self.q_table
 
@@ -103,6 +119,7 @@ class QLearning:
             state = self.env.reset()[0]
             done = False
             episode_reward = 0
+            self.env.current_episode = episode + 1
 
             while not done:
                 action = self.get_action(state)
