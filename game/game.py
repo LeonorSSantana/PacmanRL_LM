@@ -21,8 +21,9 @@ class Game:
             'algorithm': None,  # None means no specific algorithm chosen
             'speed': 60,  # Frames per second
             'deterministic': True,
-            'epsilon': 0.5,
+            'epsilon': 1.0,
             'epsilon_decay': 0.995,
+            'min_epsilon' : 0.05,
             'discount_factor': 0.9,
             'learning_rate': 0.2,
             'num_episodes': 1000
@@ -111,7 +112,7 @@ class Game:
                 print("[GAME] Testing SARSA agent...")
                 sarsa_agent = SARSA(self.env)
                 sarsa_agent.load_q_table(filename='models/sarsa_solution.pkl')
-                sarsa_agent.test(num_episodes=10)
+                sarsa_agent.test(num_episodes=100)
 
     def handle_events(self, event):
         if event.type == pygame.KEYDOWN:

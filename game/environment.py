@@ -37,7 +37,7 @@ class PacmanEnv(MiniGridEnv):
     """
 
     def __init__(self, grid_size=24, agent_start_pos=(1, 1), agent_start_dir=0, n_pellets=30, n_ghosts=4,
-                 max_steps=1000, mode='Manual', algorithm=None, frames_per_second=10, seed=None, **kwargs):
+                 max_steps=2000, mode='Manual', algorithm=None, frames_per_second=10, seed=None, **kwargs):
         self.agent_start_pos = agent_start_pos
         self.agent_start_dir = agent_start_dir
         self.cumulative_reward = 0
@@ -325,13 +325,12 @@ class PacmanEnv(MiniGridEnv):
             self.pellets_in_a_row = 0
 
 
-        # Penalização por ir contra num fantasma
-        if any(obstacle.cur_pos == self.agent_pos for obstacle in self.obstacles):
-            reward -= 50
-            terminated = True
+        is_ghost_collision = (
+            any(obstacle.cur_pos == self.agent_pos for obstacle in self.obstacles) or
+            (front_cell is not None and front_cell.type == 'lava')
+        )
 
-        # Penalização se a célula da frente for um fantasma
-        if front_cell is not None and front_cell.type == 'lava':
+        if is_ghost_collision:
             reward -= 50
             terminated = True
 
