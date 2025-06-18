@@ -14,6 +14,7 @@ class QLearning:
         self.min_epsilon = min_epsilon  # Minimum epsilon value
         self.q_table = {}  # Q-table for storing state-action values
 
+    # Transforma o state do jogo numa chave simples que pode ser usada como identificador
     def state_to_key(self, state):
         if isinstance(state, np.ndarray):
             return tuple(state.flatten())
@@ -37,7 +38,7 @@ class QLearning:
                 return self.env.action_space.sample()
             return max(state_actions, key=state_actions.get)
 
-
+    #Baixa o valor de epsilon após cada episódio
     def decay_epsilon(self):
         """
         Decay epsilon after each episode to balance exploration and exploitation.
@@ -86,7 +87,7 @@ class QLearning:
                 state_key = next_state_key
 
             total_rewards.append(episode_reward)
-            collected_pellets = 30 - self.env.remaining_pellets  # Supondo que começa com 30
+            collected_pellets = 30 - self.env.remaining_pellets  
             collected_pellets_all.append(collected_pellets)
 
             self.decay_epsilon()

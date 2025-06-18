@@ -83,7 +83,7 @@ class SARSA:
                 action = next_action
 
             total_rewards.append(episode_reward)
-            collected_pellets = 30 - self.env.remaining_pellets  # Supondo que começa com 30
+            collected_pellets = 30 - self.env.remaining_pellets  #começa com 30
             collected_pellets_all.append(collected_pellets)
 
             self.decay_epsilon()

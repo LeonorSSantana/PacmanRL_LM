@@ -160,20 +160,38 @@ class PacmanEnv(MiniGridEnv):
         agent_pos = self.agent_pos
         agent_dir = self.agent_dir
 
-        pellet_rel = self._nearest_pellet()  # já retorna (dx, dy) relativo
-        ghost_rel = self._nearest_ghost()    # já retorna (dx, dy) relativo
-
-        dist_wall = self._distance_to_wall(agent_pos, agent_dir)
-
         state = {
             'agent_pos': agent_pos,
-            'agent_dir': agent_dir,
-            'pellet_rel': pellet_rel,
-            'ghost_rel': ghost_rel,
-            'dist_wall': dist_wall,
+            'agent_dir': agent_dir
             }
+        
         # Convert dictionary to a sorted tuple of items to make it hashable
         return tuple(sorted(state.items()))
+    
+        #TENTATIVA DE MELHORAR O STATE MAS OS RESULTADOS PIORARAM
+        #def get_state(self):
+        """
+        Get the current state representation for the agent.
+        The state includes:
+        - Agent's position and direction
+        - Relative positions of the nearest pellet and ghost
+        - Distance to the nearest wall
+        """
+        #agent_pos = self.agent_pos
+        #agent_dir = self.agent_dir
+
+        #pellet_rel = self._nearest_pellet()  # já retorna (dx, dy) relativo
+        #ghost_rel = self._nearest_ghost()    # já retorna (dx, dy) relativo
+                    #'pellet_rel': pellet_rel,
+            #'ghost_rel': ghost_rel
+
+        #state = {
+            #'agent_pos': agent_pos,
+            #'agent_dir': agent_dir,
+            #'pellet_rel': pellet_rel,
+            #'ghost_rel': ghost_rel}
+        # Convert dictionary to a sorted tuple of items to make it hashable
+        #return tuple(sorted(state.items()))
 
     @staticmethod
     def bfs_nearest_object(agent_pos, grid, target_type):
@@ -229,49 +247,27 @@ class PacmanEnv(MiniGridEnv):
     #NOVOS METODOS
 
     def _is_valid_position(self, pos):
+        # Verifica se a posição está dentro dos limites do mapa e se não é uma parede.
         if not self.__is_in_bounds(pos):
-            return False
+            return False # Fora dos limites do mapa
         cell = self.grid.get(pos[0], pos[1])
         if cell is None:
-            return False
-        if cell.type == 'wall':  # ou cell.type == Wall() dependendo de como é sua grid
-            return False
-        return True
+            return False # Célula vazia (não existente)
+        if cell.type == 'wall': 
+            return False # Posição é uma parede, não pode passar
+        return True # Posição é válida
     
-    def _distance_to_wall(self, pos, direction):
-        x, y = pos
-        dist = 0
-
-        while True:
-            if direction == 'UP':
-                y -= 1
-            elif direction == 'DOWN':
-                y += 1
-            elif direction == 'LEFT':
-                x -= 1
-            elif direction == 'RIGHT':
-                x += 1
-            else:
-                # Caso tenha outras direções, pode adicionar aqui
-                break
-
-            if not self._is_valid_position((x, y)):
-                break
-
-            dist += 1
-
-        return dist
-
     def _is_dead_end(self, pos):
-        # pos é uma tupla (x, y)
+        # Verifica se o agente está num beco sem saída.
         possible_moves = 0
         for direction_vec in DIR_TO_VEC:
             neighbor = (pos[0] + direction_vec[0], pos[1] + direction_vec[1])
             if self._is_valid_position(neighbor):
                 possible_moves += 1
-        return possible_moves <= 1
+        return possible_moves <= 1 # Se houver só uma ou nenhuma saída, é um beco
 
     def _is_open_area(self, pos):
+        # Verifica o agente está numa área aberta (>=3 caminhos disponíveis).
         possible_moves = 0
         for direction_vec in DIR_TO_VEC:
             neighbor = (pos[0] + direction_vec[0], pos[1] + direction_vec[1])
@@ -292,7 +288,7 @@ class PacmanEnv(MiniGridEnv):
         :param action: The action to execute (0: turn left, 1: turn right, 2: move forward)
         :return: Tuple (reward, terminated)
         """
-        reward = -0.5 # Penalty for each step ALTERADO DE 1 PARA 0.5
+        reward = -0.5 # Penalização por cada passo dado - ALTERADO DE 1 PARA 0.5
         terminated = False
 
         # Inicializar estruturas se necessário
@@ -310,9 +306,9 @@ class PacmanEnv(MiniGridEnv):
 
         # Check if the agent attempts to move into a wall
         if action == self.actions.forward and front_cell is not None and front_cell.type == 'wall':
-            reward -= 0.5
+            reward -= 0.7
 
-        # Reward for reaching the pellet
+        # Recompença por apanhar um pellet
         current_cell = self.grid.get(*self.agent_pos)
         if current_cell and current_cell.type == 'goal':
             reward += 100
@@ -329,22 +325,22 @@ class PacmanEnv(MiniGridEnv):
             self.pellets_in_a_row = 0
 
 
-        # Penalty for hitting a ghost
+        # Penalização por ir contra num fantasma
         if any(obstacle.cur_pos == self.agent_pos for obstacle in self.obstacles):
             reward -= 50
             terminated = True
 
-        # Penalty if front cell is a ghost
+        # Penalização se a célula da frente for um fantasma
         if front_cell is not None and front_cell.type == 'lava':
             reward -= 50
             terminated = True
 
-        # Calculate the nearest pellet position before action
+        # Calcular a posição do pellet mais próximo antes do agente agir
         nearest_pellet_pos = self._nearest_pellet()
         nearest_pellet_abs_pos = np.array(self.agent_pos) + np.array(nearest_pellet_pos)
         current_distance = np.linalg.norm(np.array(self.agent_pos) - nearest_pellet_abs_pos)
 
-        # Calculate new position and direction based on the action
+        # Calcular a nova posição e direção baseada na ação
         new_agent_pos = np.array(self.agent_pos)
         new_agent_dir = self.agent_dir
 
@@ -357,21 +353,23 @@ class PacmanEnv(MiniGridEnv):
 
         new_agent_pos_tuple = tuple(new_agent_pos)
 
-        # Calculate the new front position and distance to the nearest pellet after the action
+        # Calcular a nova front position e a distância para o pellet mais próximo depois da ação
         new_distance = np.linalg.norm(new_agent_pos - nearest_pellet_abs_pos)
 
-        # Adjusting the new distance if the action is forward and the agent is exactly at the pellet
+        # Ajustar a nova distância se a ação for andar para a frente e o agente estiver exatamente em cima do pellet
         if action == self.actions.forward and np.array_equal(new_agent_pos, nearest_pellet_abs_pos):
             new_distance = 0  # No penalty if moving directly onto the pellet
 
-        # Penalize if the new distance is greater than the current distance
+        # Penalizar se a nova distância for maior do que a distância atual
+        distance_penalized = False
         if new_distance > current_distance:
             reward -= 0.5
+            distance_penalized = True
         elif new_distance < current_distance:
             reward += (current_distance - new_distance) * 0.5  # bónus proporcional
 
-        # Penalize if the agent is not facing the nearest pellet
-        # Determine the direction from the agent to the nearest pellet
+        # Penalizar se o agente não estiver virado para o pellet mais próximo
+        # Determinar a direção do agente até ao pellet mais próximo
         direction_to_pellet = np.array(nearest_pellet_pos)
         direction_to_pellet = np.sign(direction_to_pellet)  # Get the direction vector in terms of unit steps
 
@@ -387,11 +385,11 @@ class PacmanEnv(MiniGridEnv):
         else:
             desired_direction = self.agent_dir  # If pellet is on the agent or direction is indeterminate
 
-        # Penalize if the agent's direction is not facing towards the nearest pellet
-        if new_distance <= 3 and new_agent_dir != desired_direction:
-            reward -= 0.2  # penalização menor por direção ineficiente
+        # Penalizar orientação incorreta apenas se não foi penalizado por se afastar
+        if not distance_penalized and new_distance <= 3 and new_agent_dir != desired_direction:
+            reward -= 0.2
         
-        # Penalização por proximidade de fantasmas
+        # Penalização por estar próximo de fantasmas
         ghost_rel = self._nearest_ghost()
         ghost_abs = np.array(self.agent_pos) + np.array(ghost_rel)
         ghost_distance = np.linalg.norm(np.array(self.agent_pos) - ghost_abs)
@@ -428,7 +426,6 @@ class PacmanEnv(MiniGridEnv):
             if new_ghost_distance > ghost_distance:
                 reward += 0.5
 
-
         # Bónus final se apanhar todos os pellets
         if self.remaining_pellets == 0:
             reward += 200
@@ -452,7 +449,7 @@ class PacmanEnv(MiniGridEnv):
         self.agent_steps += 1
 
         # Update obstacle (ghost) positions without diagonal movement
-        if self.agent_steps >= 50:
+        if self.agent_steps >= 50: #Os fantasmas só andam depois do agente fazer 50 ações
             for obstacle in self.obstacles:
                 old_pos = obstacle.cur_pos
 
