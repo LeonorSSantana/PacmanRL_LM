@@ -50,6 +50,12 @@ class PacmanEnv(MiniGridEnv):
         self.pellets_in_a_row = 0
         self.predicted_ghost_path = []
         self.current_episode = 0
+        self.blink_timer = 0
+        self.blink_duration = 30  
+        self.ghost_collision_cooldown = 0
+        self.ghost_collision_cooldown_duration = 10 
+        self.ghost_hits = 0
+
 
 
         # Environment-specific properties
@@ -332,17 +338,33 @@ class PacmanEnv(MiniGridEnv):
         )
 
         if is_ghost_collision:
+            # Inicializar atributos se ainda não existem
             if not hasattr(self, 'ghost_hits'):
                 self.ghost_hits = 0
 
-            self.ghost_hits += 1
+            if not hasattr(self, 'ghost_collision_cooldown'):
+                self.ghost_collision_cooldown = 0
+                self.ghost_collision_cooldown_duration = 30  # número de passos de espera
 
-            if self.ghost_hits < 3:
-                reward -= 100
-                terminated = False
+            # Verifica se está fora do cooldown para registar nova colisão
+            if self.ghost_collision_cooldown == 0:
+                self.ghost_hits += 1
+                self.ghost_collision_cooldown = self.ghost_collision_cooldown_duration
+                self.blink_timer = self.blink_duration
+
+                reward -= 50  # Penalização em todas as colisões
+
+                if self.ghost_hits >= 3:
+                    terminated = True
+                else:
+                    terminated = False
             else:
-                reward -= 100  # Penalidade também na 3ª colisão
-                terminated = True
+                # Está em cooldown — ainda colidiu, mas não conta como nova
+                reward -= 0  # ou mantém o -50, dependendo se queres penalizar mesmo no cooldown
+                terminated = False
+        else:
+            self.ghost_collision_cooldown = max(0, self.ghost_collision_cooldown - 1)
+
 
         # Calcular a posição do pellet mais próximo antes do agente agir
         nearest_pellet_pos = self._nearest_pellet()
