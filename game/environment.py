@@ -294,7 +294,7 @@ class PacmanEnv(MiniGridEnv):
         :param action: The action to execute (0: turn left, 1: turn right, 2: move forward)
         :return: Tuple (reward, terminated)
         """
-        reward = -0.5 # Penalização por cada passo dado - ALTERADO DE 1 PARA 0.5
+        reward = -0.1 # Penalização por cada passo dado - ALTERADO DE 1 PARA 0.5
         terminated = False
 
         # Inicializar estruturas se necessário
@@ -321,7 +321,7 @@ class PacmanEnv(MiniGridEnv):
                 self.pellets_collected = 0
 
             base_reward = 100
-            pellet_bonus = 5 * self.pellets_collected
+            pellet_bonus = 10 * self.pellets_collected
             reward += base_reward + pellet_bonus
 
             self.pellets_collected += 1
@@ -352,15 +352,15 @@ class PacmanEnv(MiniGridEnv):
                 self.ghost_collision_cooldown = self.ghost_collision_cooldown_duration
                 self.blink_timer = self.blink_duration
 
-                reward -= 50  # Penalização em todas as colisões
-
                 if self.ghost_hits >= 3:
+                    reward -= 30
                     terminated = True
                 else:
+                    reward -= 30
                     terminated = False
             else:
                 # Está em cooldown — ainda colidiu, mas não conta como nova
-                reward -= 0  # ou mantém o -50, dependendo se queres penalizar mesmo no cooldown
+                reward -= 0 
                 terminated = False
         else:
             self.ghost_collision_cooldown = max(0, self.ghost_collision_cooldown - 1)
@@ -397,7 +397,7 @@ class PacmanEnv(MiniGridEnv):
             reward -= 0.5
             distance_penalized = True
         elif new_distance < current_distance:
-            reward += (current_distance - new_distance) * 0.5  # bónus proporcional
+            reward += (current_distance - new_distance) * 1.0  # bónus proporcional
 
         # Penalizar se o agente não estiver virado para o pellet mais próximo
         # Determinar a direção do agente até ao pellet mais próximo
@@ -419,7 +419,12 @@ class PacmanEnv(MiniGridEnv):
         # Penalizar orientação incorreta apenas se não foi penalizado por se afastar
         if not distance_penalized and new_distance <= 3 and new_agent_dir != desired_direction:
             reward -= 0.2
-        
+
+        #bónus extra quando o agente fica diretamente alinhado com o pellet e na direção correta.
+        if new_agent_dir == desired_direction and new_distance < current_distance:
+            reward += 1.5  # extra bónus por estar alinhado e a avançar
+
+
         # Penalização por estar próximo de fantasmas
         ghost_rel = self._nearest_ghost()
         ghost_abs = np.array(self.agent_pos) + np.array(ghost_rel)
@@ -444,9 +449,9 @@ class PacmanEnv(MiniGridEnv):
 
         # Penalidade por becos e bônus por áreas abertas
         if self._is_dead_end(new_agent_pos_tuple):
-            reward -= 0.5
+            reward -= 1
         elif self._is_open_area(new_agent_pos_tuple):
-            reward += 1
+            reward += 2
 
         # Evitou rota prevista de fantasma
         if self.predicted_ghost_path and new_agent_pos_tuple not in self.predicted_ghost_path[:2]:
@@ -513,10 +518,16 @@ class PacmanEnv(MiniGridEnv):
             print(f"[ENV] All pellets collected! Cumulative Reward: {self.cumulative_reward}")
             self.close()
 
+        # Calcula vidas restantes
+        total_lives = 3
+        lives_left = max(total_lives - getattr(self, 'ghost_hits', 0), 0)
+
         # Update the mission text to reflect the new reward
-        self.mission = f"Mode: {self.mode}      Episode: {self.current_episode}       Reward: {round(self.cumulative_reward,2)}        Pellets: {self.remaining_pellets}" \
-            if self.mode == "Manual" else \
-            f"Algorithm: {self.algorithm}       Episode: {self.current_episode}        Reward: {round(self.cumulative_reward,2)}        Pellets: {self.remaining_pellets}"
+        self.mission = (
+            f"M:{self.mode} | Ep:{self.current_episode} | R:{round(self.cumulative_reward,1)} | P:{self.remaining_pellets} | V:{lives_left}/3"
+        if self.mode == "Manual" else
+            f"Algoritmo:{self.algorithm} | Ep:{self.current_episode} | Rw:{round(self.cumulative_reward,1)} | Plts:{self.remaining_pellets} | Vidas:{lives_left}/3"
+)
 
         return obs, reward, terminated, truncated, info
 
