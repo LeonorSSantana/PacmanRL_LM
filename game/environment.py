@@ -311,18 +311,19 @@ class PacmanEnv(MiniGridEnv):
         # Recompença por apanhar um pellet
         current_cell = self.grid.get(*self.agent_pos)
         if current_cell and current_cell.type == 'goal':
-            reward += 100
-            if getattr(self, 'last_reward_was_pellet', False):
-                reward += 25 + 10 * getattr(self, 'pellets_in_a_row', 0)
-                self.pellets_in_a_row += 1  # bónus por apanhar pellets seguidos ADICIONADO
-            else:
-                self.pellets_in_a_row = 1
+            if not hasattr(self, 'pellets_collected'):
+                self.pellets_collected = 0
+
+            base_reward = 100
+            pellet_bonus = 5 * self.pellets_collected
+            reward += base_reward + pellet_bonus
+
+            self.pellets_collected += 1
+
             self.last_reward_was_pellet = True
+            self.pellets_in_a_row = getattr(self, 'pellets_in_a_row', 0) + 1  # Se quiseres manter bónus por sequência
             self.grid.set(self.agent_pos[0], self.agent_pos[1], None)
             self.remaining_pellets -= 1
-        else:
-            self.last_reward_was_pellet = False
-            self.pellets_in_a_row = 0
 
 
         is_ghost_collision = (
@@ -331,8 +332,17 @@ class PacmanEnv(MiniGridEnv):
         )
 
         if is_ghost_collision:
-            reward -= 50
-            terminated = True
+            if not hasattr(self, 'ghost_hits'):
+                self.ghost_hits = 0
+
+            self.ghost_hits += 1
+
+            if self.ghost_hits < 3:
+                reward -= 100
+                terminated = False
+            else:
+                reward -= 100  # Penalidade também na 3ª colisão
+                terminated = True
 
         # Calcular a posição do pellet mais próximo antes do agente agir
         nearest_pellet_pos = self._nearest_pellet()
@@ -512,6 +522,8 @@ class PacmanEnv(MiniGridEnv):
         self.cumulative_reward = 0
         self.remaining_pellets = self.n_pellets
         self.agent_steps = 0
+        self.pellets_collected = 0
+        self.ghost_hits = 0
 
         return obs, info
 
