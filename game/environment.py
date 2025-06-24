@@ -55,6 +55,7 @@ class PacmanEnv(MiniGridEnv):
         self.ghost_collision_cooldown = 0
         self.ghost_collision_cooldown_duration = 10 
         self.ghost_hits = 0
+        self.episode_count = 0
 
 
 
@@ -281,6 +282,35 @@ class PacmanEnv(MiniGridEnv):
                 possible_moves += 1
         return possible_moves >= 3
     
+    def _find_safe_spawn(self):
+        """
+        Procura uma posição segura onde o Pacman pode renascer após colidir com um fantasma.
+        """
+        possible_positions = []
+
+        for y in range(self.grid.height):
+            for x in range(self.grid.width):
+                pos = (x, y)
+                cell = self.grid.get(x, y)
+                if cell is not None and cell.type not in ['wall', 'lava']:
+                    # Verifica se está longe de fantasmas
+                    if all(np.linalg.norm(np.array(pos) - np.array(ob.cur_pos)) >= 3 for ob in self.obstacles):
+                        possible_positions.append(pos)
+
+        if possible_positions:
+            return random.choice(possible_positions)  # escolhe uma posição segura aleatória
+
+        # fallback: escolhe qualquer posição livre
+        fallback_positions = [
+            (x, y)
+            for y in range(self.grid.height)
+            for x in range(self.grid.width)
+            if self.grid.get(x, y) is not None and self.grid.get(x, y).type != 'wall'
+        ]
+        if fallback_positions:
+            return random.choice(fallback_positions)
+
+        return self.agent_pos  # última opção
 
     def __calculate_rewards(self, action):
         """
@@ -542,6 +572,7 @@ class PacmanEnv(MiniGridEnv):
             for y in range(self.grid.height)
             if self.grid.get(x, y) is None
         ]
+
 
         # Filter out positions occupied by ghosts
         ghost_positions = {obstacle.cur_pos for obstacle in self.obstacles}
