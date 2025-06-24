@@ -324,7 +324,7 @@ class PacmanEnv(MiniGridEnv):
         :param action: The action to execute (0: turn left, 1: turn right, 2: move forward)
         :return: Tuple (reward, terminated)
         """
-        reward = -0.1 # Penalização por cada passo dado - ALTERADO DE 1 PARA 0.5
+        reward = 0 # Penalização por cada passo dado - ALTERADO DE 1 PARA 0.5
         terminated = False
 
         # Inicializar estruturas se necessário
@@ -342,7 +342,7 @@ class PacmanEnv(MiniGridEnv):
 
         # Check if the agent attempts to move into a wall
         if action == self.actions.forward and front_cell is not None and front_cell.type == 'wall':
-            reward -= 0.7
+            reward -= 1
 
         # Recompença por apanhar um pellet
         current_cell = self.grid.get(*self.agent_pos)
@@ -350,14 +350,14 @@ class PacmanEnv(MiniGridEnv):
             if not hasattr(self, 'pellets_collected'):
                 self.pellets_collected = 0
 
-            base_reward = 100
-            pellet_bonus = 10 * self.pellets_collected
+            base_reward = 20
+            pellet_bonus = 0.5 * self.pellets_collected
             reward += base_reward + pellet_bonus
 
             self.pellets_collected += 1
 
             self.last_reward_was_pellet = True
-            self.pellets_in_a_row = getattr(self, 'pellets_in_a_row', 0) + 1  # Se quiseres manter bónus por sequência
+            self.pellets_in_a_row = getattr(self, 'pellets_in_a_row', 0) + 0.5 # Se quiseres manter bónus por sequência
             self.grid.set(self.agent_pos[0], self.agent_pos[1], None)
             self.remaining_pellets -= 1
 
@@ -383,15 +383,23 @@ class PacmanEnv(MiniGridEnv):
                 self.blink_timer = self.blink_duration
 
                 if self.ghost_hits >= 3:
-                    reward -= 30
+                    reward -= 50
                     terminated = True
                 else:
                     reward -= 30
                     terminated = False
+
+                    # Renascer noutro local
+                    safe_pos = self._find_safe_spawn()
+                    self.grid.set(self.agent_pos[0], self.agent_pos[1], None)  # limpa posição anterior
+                    self.agent_pos = safe_pos
+                    self.agent_dir = random.randint(0, 3)  # direção aleatória (opcional)
+
             else:
                 # Está em cooldown — ainda colidiu, mas não conta como nova
                 reward -= 0 
                 terminated = False
+
         else:
             self.ghost_collision_cooldown = max(0, self.ghost_collision_cooldown - 1)
 
@@ -448,11 +456,11 @@ class PacmanEnv(MiniGridEnv):
 
         # Penalizar orientação incorreta apenas se não foi penalizado por se afastar
         if not distance_penalized and new_distance <= 3 and new_agent_dir != desired_direction:
-            reward -= 0.2
+            reward -= 0.3
 
         #bónus extra quando o agente fica diretamente alinhado com o pellet e na direção correta.
         if new_agent_dir == desired_direction and new_distance < current_distance:
-            reward += 1.5  # extra bónus por estar alinhado e a avançar
+            reward += 0.3  # extra bónus por estar alinhado e a avançar
 
 
         # Penalização por estar próximo de fantasmas
@@ -465,7 +473,7 @@ class PacmanEnv(MiniGridEnv):
         elif ghost_distance < 2.5:
             reward -= 0.5
         elif ghost_distance >= 3:
-            reward += 1
+            reward += 0.5
 
         # Exploração de novas áreas
         if new_agent_pos_tuple not in self.visited_positions:
@@ -475,11 +483,11 @@ class PacmanEnv(MiniGridEnv):
         # Penalidade por repetir posições
         self.position_history.append(new_agent_pos_tuple)
         if self.position_history.count(new_agent_pos_tuple) > 3:
-            reward -= 0.1
+            reward -= 0.3
 
         # Penalidade por becos e bônus por áreas abertas
         if self._is_dead_end(new_agent_pos_tuple):
-            reward -= 1
+            reward -= 2
         elif self._is_open_area(new_agent_pos_tuple):
             reward += 2
 
